@@ -12,9 +12,12 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
         actual_value = driver.get(URL)
         self.assertEqual(expected_value, actual_value)
 
+    def click_on_accept_cookies_button(self):
+        expected_value = 
+
 
     def tearDown(self):
-        del = self.AsosScraper
+        del self.AsosScraper
 
     
 
