@@ -4,6 +4,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 import itertools
+import urllib.request
 
 class AsosScraper:
      def __init__ (self, driver: webdriver.Chrome(), gender: str):
@@ -53,7 +54,7 @@ class AsosScraper:
    #          self.driver.get(product)
          
      def product_information(self):
-        ''' 
+            ''' 
     #TODO: Add image scraping functionality and create folder to add them to. Naming files appropriately too.
     A function to iterate through the product URL's of a webpage,
     scrape product data and then append the data to a dictionary.
@@ -63,18 +64,18 @@ class AsosScraper:
     Returns:
         Data organised into a dictionary for every product visited
     '''
-        xpath_dict = {
+            self.xpath_dict = {
                 'Product Name' : '//*[@id="aside-content"]/div[1]/h1', 
                 'Price' : '//*[@id="product-price"]/div/span[2]/span[4]/span[1]', 
                 # 'Product Details' : list, 
                 'Product Code' : '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p', 
                 'Colour' : '//*[@id="product-colour"]/section/div/div/span' 
                 }
-        url_counter = 0
-        for url in self.product_urls: #TODO: use enumerate
-          self.driver.get(url)
-          url_counter += 1
-          product_information_dict = {
+            url_counter = 0
+            for url in self.product_urls: #TODO: use enumerate
+               self.driver.get(url)
+               url_counter += 1
+               self.product_information_dict = {
                                     f'Product{url_counter}':{
             'Product Name' : [], 
             'Price' : [], 
@@ -83,19 +84,21 @@ class AsosScraper:
             'Colour' : []
             }
             }
-          try: #find details info
+               try: #find details info
                   for key in self.xpath_dict:
-                   dict_key = self.driver.find_element_by_xpath(xpath_dict.get(key))
-                   product_information_dict[f'Product{url_counter}'][xpath_dict[key]].append(dict_key.text)
-          except:
-            product_information_dict[f'Product{url_counter}'][xpath_dict[key]].append('No information found')
+                   dict_key = self.driver.find_element_by_xpath(self.xpath_dict[key])
+                   self.product_information_dict[f'Product{url_counter}'][key].append(dict_key.text)
+               except:
+                   self.product_information_dict[f'Product{url_counter}'][key].append('No information found')
         
-         #  if url_counter == 4: #breaks after 3 items just for testing purposes
-         #    break
-
-        print(product_information_dict)
+               self.src = driver.find_element_by_xpath('//img[@class="_2UpQX"]').get_attribute('src')
+               
+               if url_counter == 4: #breaks after 3 items just for testing purposes
+                 break
+        
+               print(self.product_information_dict)
+     
     
-      #   self.driver.navigate().back()
 
 product_search = AsosScraper(webdriver.Chrome(),'men')
 product_search.accept_cookies_button()
