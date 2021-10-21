@@ -63,10 +63,10 @@ class AsosScraper:
     Returns:
         Data organised into a dictionary for every product visited
     '''
-        xpath_dict = {
+        self.xpath_dict = {
                 'Product Name' : '//*[@id="aside-content"]/div[1]/h1', 
                 'Price' : '//*[@id="product-price"]/div/span[2]/span[4]/span[1]', 
-                # 'Product Details' : list, 
+                'Product Details' : list, 
                 'Product Code' : '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p', 
                 'Colour' : '//*[@id="product-colour"]/section/div/div/span' 
                 }
@@ -85,17 +85,23 @@ class AsosScraper:
             }
           try: #find details info
                   for key in self.xpath_dict:
-                   dict_key = self.driver.find_element_by_xpath(xpath_dict.get(key))
-                   product_information_dict[f'Product{url_counter}'][xpath_dict[key]].append(dict_key.text)
+                   dict_key = self.driver.find_element_by_xpath(self.xpath_dict[key])
+                   self.product_information_dict[f'Product{url_counter}'][key].append(dict_key.text)
           except:
-            product_information_dict[f'Product{url_counter}'][xpath_dict[key]].append('No information found')
+                   self.product_information_dict[f'Product{url_counter}'][key].append('No information found')
         
-         #  if url_counter == 4: #breaks after 3 items just for testing purposes
-         #    break
+          if url_counter == 4: #breaks after 3 items just for testing purposes
+            break
 
         print(product_information_dict)
     
       #   self.driver.navigate().back()
+     #def save_to_json(self):
+         # test_dict = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+         # with open('JSON_test.json', mode='w') as f:
+         # json.dump(test_dict, f)
+         
+
 
 product_search = AsosScraper(webdriver.Chrome(),'men')
 product_search.accept_cookies_button()
