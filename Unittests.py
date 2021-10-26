@@ -1,26 +1,20 @@
 import unittest
+
+from hypothesis.core import given
 from ASOS_Webscraper import AsosScraper 
 from selenium import webdriver 
-import hypothesis
+import hypothesis.strategies as st 
 
-# import unittest
-# from example.cart import ShoppingCart
-# from example.product import Product
+
 class ASOS_Webscraper_Tests(unittest.TestCase):
 
     def setUp(self):
         self.AsosScraper = AsosScraper(webdriver.Chrome(),'men')
-        
-    def test_go_to_website(self):
-        # expected_value = "https://www.asos.com/men"    
-        self.assertTrue(webdriver.Chrome().get("https:/www.asos.com/men"))
-    # def number_of_extracted_urls(self):
-    #     expected_value = 72
-    #     actual_value = print(len(self.links))
-    #     self.assertEqual(expected_value,actual_value)
-
     
-      
+    @given(st.just('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]'))
+    def test_accept_cookies(self, xpath):
+        self.assertEqual('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]')
+        
 
 
     def tearDown(self):
