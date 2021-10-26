@@ -67,7 +67,7 @@ class AsosScraper:
             self.xpath_dict = {
                 'Product Name': '//*[@id="aside-content"]/div[1]/h1',
                 'Price': '//*[@id="product-price"]/div/span[2]/span[4]/span[1]',
-                # 'Product Details' : list,
+                'Product Details' : '//*[@id="product-details-container"]/div[1]/div/ul/li[*]',
                 'Product Code': '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p',
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'
                 }
@@ -75,14 +75,14 @@ class AsosScraper:
             for url in self.product_urls:  # TODO: use enumerate
                self.driver.get(url)
                url_counter += 1
-               if url_counter == 4: #breaks after 3 items just for testing purposes
+               if url_counter == 3: #breaks after 3 items just for testing purposes
                  break
 
                self.product_information_dict = {
                                     f'Product{url_counter}': {
             'Product Name': [],
             'Price': [],
-            # 'Product Details' : [],
+            'Product Details' : [],
             'Product Code': [],
             'Colour': []
             }
@@ -94,16 +94,24 @@ class AsosScraper:
                    self.product_information_dict[f'Product{url_counter}'][key].append(dict_key.text)
                except:
                    self.product_information_dict[f'Product{url_counter}'][key].append('No information found')
+               
+               try: # find product details info 
+                    details_container = self.driver.find_elements_by_xpath(self.xpath_dict['Product Details'])
+                    for detail in details_container:
+                        self.product_information_dict[f'Product{url_counter}']['Product Details'].append(detail.text)
+               except:  
+                    self.product_information_dict[f'Product{url_counter}']['Product Details'].append('No information found')  
 
-               self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
-               self.src_list = []
-               for xpath_src in self.xpath_src_list:
-                  self.src_list.append(xpath_src.get_attribute('src'))
+               #download the each product images to the images folder        
+            #    self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
+            #    self.src_list = []
+            #    for xpath_src in self.xpath_src_list:
+            #       self.src_list.append(xpath_src.get_attribute('src'))
         
-               for i,src in enumerate(self.src_list):
-                   urllib.request.urlretrieve(src, f"images\{self.gender}_Product{url_counter}.{i}.jpg")
+            #    for i,src in enumerate(self.src_list):
+            #        urllib.request.urlretrieve(src, f"images\{self.gender}_Product{url_counter}.{i}.jpg")
 
-               print(self.product_information_dict)
+            #    print(self.product_information_dict)
      
     
 
