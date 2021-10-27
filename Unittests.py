@@ -8,15 +8,13 @@ import hypothesis.strategies as st
 
 class ASOS_Webscraper_Tests(unittest.TestCase):
 
+    scraper_links = AsosScraper(driver = webdriver.Chrome, gender = 'men')
+    scraper_links = AsosScraper.extract_links
     def setUp(self):
         self.driver = webdriver.Chrome()
+        
         # self.driver.get("https://www.asos.com/men")
-        self.scraper_links = AsosScraper(driver = webdriver.Chrome, gender = 'men')
-        self.root = "https://www.asos.com/"
-        self.gender = self.scraper_links.gender
-        URL = self.root + self.scraper_links.gender
-        self.driver = self.scraper_links.driver 
-        self.driver.get(URL)
+       
      
 
   
@@ -41,7 +39,7 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
         #  element="f83d42a9-b4f2-4396-8537-b26929e4ea3a")>
 
     def test_example(self):
-        self.scraper_links.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
+        # scraper_links = AsosScraper.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
         for element in   self.scraper_links.extract_links():
             if element.slice(0,8,1) == "https://":
                 expected_value = True 
@@ -54,8 +52,8 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
     # list should contain strings with URLs inside 
     # self.links string starts with. https:// 
 
-    def tearDown(self):
-        del self.scraper_links.close()
+    # def tearDown(self):
+    #     del self.scraper_links.close()
 
  
 
