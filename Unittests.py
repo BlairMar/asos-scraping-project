@@ -8,12 +8,15 @@ import hypothesis.strategies as st
 
 class ASOS_Webscraper_Tests(unittest.TestCase):
 
-    scraper_links = AsosScraper(driver = webdriver.Chrome, gender = 'men')
-    scraper_links = AsosScraper.extract_links
+    
+    
     def setUp(self):
         self.driver = webdriver.Chrome()
+        self.driver.implicitly_wait(30)
         
-        # self.driver.get("https://www.asos.com/men")
+        # navigate to the application home page
+        self.driver.get("http://www.asos.com/men")
+        
        
      
 
@@ -24,12 +27,6 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
     #     self.driver.get("https://www.asos.com/men")
     #     self.assertTrue(self.driver)
     
-   
-    # def test_accept_cookies(self):
-    #     xpath = '//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]'
-    #     expected_value = self.driver.find_element_by_xpath(xpath)
-    #     actual_value = AsosScraper.accept_cookies_button('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]')
-    #     self.assertEqual(expected_value, actual_value)
 
         # '//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]'
         
@@ -38,22 +35,20 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
         # (session="be4677ff5a73456b180d5f25371fdfe5",
         #  element="f83d42a9-b4f2-4396-8537-b26929e4ea3a")>
 
+    # Successful Unittest! 
     def test_example(self):
-        # scraper_links = AsosScraper.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
-        for element in   self.scraper_links.extract_links():
-            if element.slice(0,8,1) == "https://":
-                expected_value = True 
-            else: 
-                expected_value = False 
-            
-        actual_value = self.links 
-        self.assertEqual(expected_value, actual_value)
+        test_list = self.driver.find_elements_by_xpath('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[1]')
+        print(test_list)
+        number_of_items = len(test_list)
+        self.assertIsInstance(test_list, list)
+        
+
 
     # list should contain strings with URLs inside 
     # self.links string starts with. https:// 
 
     # def tearDown(self):
-    #     del self.scraper_links.close()
+    #     del setUp(self)
 
  
 
