@@ -1,4 +1,4 @@
-from pprint import pprint
+#from pprint import pprint
 import time
 import selenium
 from selenium import webdriver
@@ -8,7 +8,7 @@ import urllib.request
 
 
 class AsosScraper:
-     def __init__(self, driver: webdriver.Chrome(), gender: str):
+     def __init__(self, driver, gender: str):
         self.root = "https://www.asos.com/"
         self.gender = gender
         URL = self.root + gender
@@ -25,6 +25,8 @@ class AsosScraper:
          for item in xpaths_list:
             self.links.append(item.find_element_by_xpath(
                 './/a').get_attribute('href'))
+        #  print(len(self.links))
+         return self.links
 
      def click_buttons(self, button_xpath, n_clicks: int ): # n_clicks is the number of clicks 
         for i in range(1, n_clicks + 1):
@@ -32,6 +34,7 @@ class AsosScraper:
             button.click()
             i += 1
             time.sleep(3)
+        return True
         
      # this method finds the second button (out of 12) from the category buttons top bar, and perform a hover over element function
      def choose_category(self, category_xpath:str): #category_xpath: str
@@ -55,10 +58,22 @@ class AsosScraper:
          for section_xpath in sections_xpaths_list:# for every section(page with 72 products) use the "extract_links" method to extract the hrefs for every product on the page
              self.extract_links(section_xpath)
              list_all_products += self.links  #self.links will extract 72 hrefs for every section_xpath and will be added to the list_all_products
+            #  return len(list_all_products)
         
          print(len(list_all_products))
          self.product_urls = list_all_products # save the list with hrefs in another variable that will be reffered to in the following methods
+        #  return self.product_urls
+         return len(list_all_products)
 
+
+     def download_images(self):
+         self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
+               self.src_list = []                                        
+               for xpath_src in self.xpath_src_list:
+                   self.src_list.append(xpath_src.get_attribute('src'))
+        
+               for i,src in enumerate(self.src_list[:-1]):   
+                   urllib.request.urlretrieve(src, f"images\{self.gender}_Product{url_counter}.{i}.jpg")
 
      def product_information(self, xpath_dict):
             '''
@@ -77,7 +92,7 @@ class AsosScraper:
                url_counter += 1
                if url_counter == 4: #breaks after 3 items just for testing purposes
                  break
-
+                
                self.product_information_dict = {
                                 f'Product{url_counter}': {
             'Product Name': [],
@@ -102,13 +117,7 @@ class AsosScraper:
                     self.product_information_dict[f'Product{url_counter}'][key].append('No information found')
                    
                #download the each product images to the images folder        
-               self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
-               self.src_list = []                                        
-               for xpath_src in self.xpath_src_list:
-                   self.src_list.append(xpath_src.get_attribute('src'))
-        
-               for i,src in enumerate(self.src_list[:-1]):   
-                   urllib.request.urlretrieve(src, f"images\{self.gender}_Product{url_counter}.{i}.jpg")
+               
 
                print(self.product_information_dict)
      
@@ -124,15 +133,16 @@ xpath_dict = {
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'
                 }  #use this dictionary inside the product_information method
 
-load_more = 3 #how many time to click the load more button
+load_more = 1 #how many time to click the load more button
 page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
 
-product_search = AsosScraper(webdriver.Chrome(),'men')
-product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
-product_search.nice_method()
-product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
-product_search.go_to_product(New_in_dict['subcategory_xpath'], New_in_dict['index']) #, dict['product_urls_xpath'])
-product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
-product_search.load_more_products()
-# product_search.product_information(xpath_dict)
+if __name__ == "__main__":
+
+    product_search = AsosScraper(webdriver.Chrome(),'men')
+    product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
+    product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
+    product_search.go_to_product(New_in_dict['subcategory_xpath'], New_in_dict['index']) #, dict['product_urls_xpath'])
+    product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
+    product_search.load_more_products()
+    # product_search.product_information(xpath_dict)
 
