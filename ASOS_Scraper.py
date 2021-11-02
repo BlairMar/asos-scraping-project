@@ -1,11 +1,10 @@
-#from pprint import pprint
+import pprint
 import time
+import itertools
+import urllib.request
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-import itertools
-import urllib.request
-
 
 class AsosScraper:
      def __init__(self, driver, gender: str):
@@ -44,7 +43,7 @@ class AsosScraper:
         time.sleep(4)
 
      # this method uses the "extract_links" method to access the first href (self.links[0]) in the "New in" subcategories list, which is "New in -> View all "
-     def go_to_product(self, subcategory_xpath, index: int):
+     def go_to_products_page(self, subcategory_xpath, index: int):
          self.extract_links(subcategory_xpath)  
          self.driver.get(self.links[index])
             
@@ -64,62 +63,58 @@ class AsosScraper:
          self.product_urls = list_all_products # save the list with hrefs in another variable that will be reffered to in the following methods
         #  return self.product_urls
          return len(list_all_products)
+     
+     def go_to_products(self):
+        # url_counter = 0
+         n = 3
+         for nr, url in itertools.islice(enumerate(self.product_urls,1),n):  # TODO: use enumerate
+            self.product_number = nr
+            self.driver.get(url)
 
+            self.product_information_dict = {f'Product{self.product_number}': 
+                                              {'Product Name': [],
+                                               'Price': [],
+                                               'Product Details' : [],
+                                               'Product Code': [],
+                                               'Colour': []
+                                               }
+                                             }
+            
+            self.get_details()
+            self.download_images()
+            # print(f'We are getting "Product {nr}" details')
+            print(self.product_information_dict)
+       
+     def get_details(self):
+        try: #find details info
+            for key in xpath_dict:
+                if key == 'Product Details':
+                    details_container = self.driver.find_elements_by_xpath(xpath_dict[key])
+                    for detail in details_container:
+                        self.product_information_dict[f'Product{self.product_number}'][key].append(detail.text)
 
-     def download_images(self):
-         self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
-               self.src_list = []                                        
-               for xpath_src in self.xpath_src_list:
-                   self.src_list.append(xpath_src.get_attribute('src'))
-        
-               for i,src in enumerate(self.src_list[:-1]):   
-                   urllib.request.urlretrieve(src, f"images\{self.gender}_Product{url_counter}.{i}.jpg")
+                else:
+                    dict_key = self.driver.find_element_by_xpath(xpath_dict[key])
+                    self.product_information_dict[f'Product{self.product_number}'][key].append(dict_key.text)
 
-     def product_information(self, xpath_dict):
-            '''
-    # TODO: Add image scraping functionality and create folder to add them to. Naming files appropriately too.
-    A function to iterate through the product URL's of a webpage,
-    scrape product data and then append the data to a dictionary.
-    Attributes:
-        xpath_dict : a dictionary containing details to be scraped and relevant xpath
-        product_information_dict : empty dictionary to have scraped details appended to
-    Returns:
-        Data organised into a dictionary for every product visited
-    '''
-            url_counter = 0
-            for url in self.product_urls:  # TODO: use enumerate
-               self.driver.get(url)
-               url_counter += 1
-               if url_counter == 4: #breaks after 3 items just for testing purposes
-                 break
-                
-               self.product_information_dict = {
-                                f'Product{url_counter}': {
-            'Product Name': [],
-            'Price': [],
-            'Product Details' : [],
-            'Product Code': [],
-            'Colour': []
-            }
-            }
-               try: #find details info
-                    for key in xpath_dict:
-                       if key == 'Product Details':
-                           details_container = self.driver.find_elements_by_xpath(xpath_dict[key])
-                           for detail in details_container:
-                            self.product_information_dict[f'Product{url_counter}'][key].append(detail.text)
+        except:
+            self.product_information_dict[f'Product{self.product_number}'][key].append('No information found')
 
-                       else:
-                          dict_key = self.driver.find_element_by_xpath(xpath_dict[key])
-                          self.product_information_dict[f'Product{url_counter}'][key].append(dict_key.text)
-
-               except:
-                    self.product_information_dict[f'Product{url_counter}'][key].append('No information found')
-                   
+        # retunr a dict      
                #download the each product images to the images folder        
                
+     def download_images(self):
+         self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
+         self.src_list = []                                        
+         for xpath_src in self.xpath_src_list:
+            self.src_list.append(xpath_src.get_attribute('src'))
+        
+         for i,src in enumerate(self.src_list[:-1],1):   
+            urllib.request.urlretrieve(src, f"images\{self.gender}_Product{self.product_number}.{i}.jpg")
 
-               print(self.product_information_dict)
+     def exit_driver(self):
+         self.driver.quit()
+
      
     
 New_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
@@ -133,16 +128,17 @@ xpath_dict = {
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'
                 }  #use this dictionary inside the product_information method
 
-load_more = 1 #how many time to click the load more button
+
+load_more = 3 #how many time to click the load more button
 page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
 
-if __name__ == "__main__":
-
+if __name__ == '__main__':
     product_search = AsosScraper(webdriver.Chrome(),'men')
     product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
     product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
-    product_search.go_to_product(New_in_dict['subcategory_xpath'], New_in_dict['index']) #, dict['product_urls_xpath'])
+    product_search.go_to_products_page(New_in_dict['subcategory_xpath'], New_in_dict['index']) #, dict['product_urls_xpath'])
     product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
     product_search.load_more_products()
-    # product_search.product_information(xpath_dict)
+    product_search.go_to_products()
+    product_search.exit_driver()
 
