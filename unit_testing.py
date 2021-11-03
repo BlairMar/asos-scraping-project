@@ -18,9 +18,9 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
     def setUp(self):
         self.scraper = AsosScraper(webdriver.Chrome(), "men")        
         
-    # def test_click_buttons(self):
-    #     click_accept_cookies = self.scraper.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1)
-    #     self.assertTrue(click_accept_cookies)
+    def test_click_buttons(self):
+        click_accept_cookies = self.scraper.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1)
+        self.assertTrue(click_accept_cookies)
 
     # def test_ASOS_SCRAPER(self):
     #     driver = webdriver.Chrome(executable_path= self.exec_path)
@@ -28,34 +28,34 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
     #     mp = AsosScraper(driver)
     #     mp.test_title()
 
-    # def test_extract_links(self):
-    #     self.scraper.driver.get("https://www.asos.com/men/new-in/cat/?cid=27110&nlid=mw|new+in|new+products|view+all")
-    #     hrefs_list = self.scraper.extract_links('//*[@id="plp"]/div/div/div[2]/div/div[1]/section[1]/article')
-    #     test_hrefs_list = random.sample(hrefs_list,2)
-    #     # test_hrefs_list = ['Miruna', 'James']
-    #     value = bool
-    #     for i in test_hrefs_list:
-    #         try:
-    #             self.scraper.driver.get(i)
-    #         # return True
-    #         # print('Method is good')   
-    #             value = True   
-    #         except: 
-    #             value = False
+    def test_extract_links(self):
+        self.scraper.driver.get("https://www.asos.com/men/new-in/cat/?cid=27110&nlid=mw|new+in|new+products|view+all")
+        hrefs_list = self.scraper.extract_links('//*[@id="plp"]/div/div/div[2]/div/div[1]/section[1]/article')
+        test_hrefs_list = random.sample(hrefs_list,2)
+        # test_hrefs_list = ['Miruna', 'James']
+        value = bool
+        for i in test_hrefs_list:
+            try:
+                self.scraper.driver.get(i)
+            # return True
+            # print('Method is good')   
+                value = True   
+            except: 
+                value = False
         
-    #     self.assertTrue(value)
-    #     # assert True
+        self.assertTrue(value)
+        # assert True
         
 
-    # def test_load_more_products(self):
-    #     # goes to the url of the page 
-    #     self.scraper.driver.get("https://www.asos.com/men/new-in/cat/?cid=27110&nlid=mw|new+in|new+products|view+all")
-    #     # runs load_more_products on the page. Defaults to 1 for section 1 
-    #     actual_value = self.scraper.load_more_products()
-    #     expected_value = 72
-    #     # print(productlist)
-    #     # self.assertIsInstance(productlist,int)
-    #     self.assertEqual(actual_value,expected_value)
+    def test_load_more_products(self):
+        # goes to the url of the page 
+        self.scraper.driver.get("https://www.asos.com/men/new-in/cat/?cid=27110&nlid=mw|new+in|new+products|view+all")
+        # runs load_more_products on the page. Defaults to 1 for section 1 
+        actual_value = self.scraper.load_more_products()
+        expected_value = 72
+        # print(productlist)
+        # self.assertIsInstance(productlist,int)
+        self.assertEqual(actual_value,expected_value)
 
     
     
@@ -83,9 +83,6 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
       # self.assertEqual(actual_value, expected_array)
 
       print(type(actual_value))
-
-
-  
 
     # def tearDown(self):
     #     del setUp(self)

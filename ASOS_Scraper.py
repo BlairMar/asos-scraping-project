@@ -1,5 +1,7 @@
 import pprint
+import os
 import time
+import json
 import itertools
 import urllib.request
 import selenium
@@ -67,6 +69,7 @@ class AsosScraper:
      def go_to_products(self):
         # url_counter = 0
          n = 3
+         self.product_dict_list = {}
          for nr, url in itertools.islice(enumerate(self.product_urls,1),n):  # TODO: use enumerate
             self.product_number = nr
             self.driver.get(url)
@@ -83,7 +86,10 @@ class AsosScraper:
             self.get_details()
             self.download_images()
             # print(f'We are getting "Product {nr}" details')
-            print(self.product_information_dict)
+            # print(self.product_information_dict)
+            self.product_dict_list.update(self.product_information_dict)
+         print(self.product_dict_list)
+            # return self.product_dict_list
        
      def get_details(self):
         try: #find details info
@@ -104,6 +110,10 @@ class AsosScraper:
                #download the each product images to the images folder        
                
      def download_images(self):
+         
+         if not os.path.exists('images'): #if there is no existing directory called "images", create one
+            os.makedirs('images')
+
          self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
          self.src_list = []                                        
          for xpath_src in self.xpath_src_list:
@@ -112,6 +122,12 @@ class AsosScraper:
          for i,src in enumerate(self.src_list[:-1],1):   
             urllib.request.urlretrieve(src, f"images\{self.gender}_Product{self.product_number}.{i}.jpg")
 
+     def save_to_json(self):
+        #with open('JSON-files\new-in\view-all.json', mode='a+') as f: 
+         with open('JSON_details.json', mode='a+') as f:
+             json.dump(self.product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
+             f.write('\n')     
+     
      def exit_driver(self):
          self.driver.quit()
 
@@ -127,7 +143,7 @@ xpath_dict = {
                 'Product Code': '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p',
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'
                 }  #use this dictionary inside the product_information method
-
+# product_dict_list = {}
 
 load_more = 3 #how many time to click the load more button
 page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
@@ -140,5 +156,6 @@ if __name__ == '__main__':
     product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
     product_search.load_more_products()
     product_search.go_to_products()
+    product_search.save_to_json()
     product_search.exit_driver()
 
