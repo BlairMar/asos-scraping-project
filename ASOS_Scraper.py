@@ -149,7 +149,6 @@ new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3
  'index': int, 'subcategory_name': str}
 
 # names_list = []
-names_list = []
 
 for subcategory_index, name1 in zip(range(len(names_list)),names_list):
     new_in_dict['index'] =  subcategory_index
