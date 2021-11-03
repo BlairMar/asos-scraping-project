@@ -27,8 +27,8 @@ class AsosScraper:
             self.links.append(item.find_element_by_xpath(
                 './/a').get_attribute('href'))
         #  print(len(self.links))
-        #  return self.links
-         print(self.links)
+         return self.links
+        #  print(self.links)
      
 
      def click_buttons(self, button_xpath, n_clicks: int ): # n_clicks is the number of clicks 
@@ -68,15 +68,19 @@ class AsosScraper:
         #  return self.product_urls
          return len(list_all_products)
      
+       
      def go_to_products(self):
         # url_counter = 0
          n = 3
          self.product_dict_list = {}
-         for nr, url in itertools.islice(enumerate(self.product_urls,1),n):  # TODO: use enumerate
+         self.sub_category_name = self.driver.find_element_by_xpath(
+             '//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
+        
+         for nr, url in itertools.islice(enumerate(self.product_urls,1),n): 
             self.product_number = nr
             self.driver.get(url)
 
-            self.product_information_dict = {f'Product{self.product_number}': 
+            self.product_information_dict = {f'{self.sub_category_name}-product-{self.product_number}': 
                                               {'Product Name': [],
                                                'Price': [],
                                                'Product Details' : [],
@@ -85,34 +89,29 @@ class AsosScraper:
                                                }
                                              }
             
-            self.get_details()
-            self.download_images()
-            # print(f'We are getting "Product {nr}" details')
-            # print(self.product_information_dict)
+            self._get_details()
+            self._download_images(self.sub_category_name)
             self.product_dict_list.update(self.product_information_dict)
-        #  print(f'This is the 
-         print(self.product_dict_list)
-            # return self.product_dict_list
-         
-     def get_details(self):
+         self._save_to_json(self.product_dict_list, self.sub_category_name)
+          
+     def _get_details(self):
         try: #find details info
             for key in xpath_dict:
                 if key == 'Product Details':
                     details_container = self.driver.find_elements_by_xpath(xpath_dict[key])
                     for detail in details_container:
-                        self.product_information_dict[f'Product{self.product_number}'][key].append(detail.text)
+                        self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append(detail.text)
 
                 else:
                     dict_key = self.driver.find_element_by_xpath(xpath_dict[key])
-                    self.product_information_dict[f'Product{self.product_number}'][key].append(dict_key.text)
+                    self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append(dict_key.text)
 
         except:
-            self.product_information_dict[f'Product{self.product_number}'][key].append('No information found')
+            self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append('No information found')
+        
+        return self.product_information_dict
 
-        # retunr a dict      
-               #download the each product images to the images folder        
-               
-     def download_images(self):
+     def _download_images(self, sub_category_name: str):
          
          if not os.path.exists('images'): #if there is no existing directory called "images", create one
             os.makedirs('images')
@@ -123,42 +122,35 @@ class AsosScraper:
             self.src_list.append(xpath_src.get_attribute('src'))
         
          for i,src in enumerate(self.src_list[:-1],1):   
-            urllib.request.urlretrieve(src, f"images\{self.gender}_Product{self.product_number}.{i}.jpg")
+            urllib.request.urlretrieve(src, f'images\{sub_category_name}-product{self.product_number}.{i}.jpg')
 
-     def save_to_json(self):
+     def _save_to_json(self, product_dict_list: dict, sub_category_name: str):
+         if not os.path.exists('json_files'): 
+            os.makedirs('json_files')
         #with open('JSON-files\new-in\view-all.json', mode='a+') as f: 
-         with open('JSON_details.json', mode='a+') as f:
-             json.dump(self.product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
+         with open(f'json_files\{sub_category_name}_details.json', mode='a+') as f:
+             json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
              f.write('\n')     
-    
+     
      def extract_subcategory_name(self, xpath: str):
+         
          xpaths_list = self.driver.find_elements_by_xpath(xpath)
          self.names = []
          for name in xpaths_list:
             self.names.append(name.find_element_by_xpath(
                 './/a').text)
-         
-         names_list.extend(self.names)
-         return self.names        
-        #  print(self.names)
-  
 
-     
+         return self.names        
+       
+
    
 new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
- 'index': int, 'subcategory_name': str}
+ 'index': 2, 'subcategory_name': str}
 
-# names_list = []
-
+names_list = []
 for subcategory_index, name1 in zip(range(len(names_list)),names_list):
     new_in_dict['index'] =  subcategory_index
     new_in_dict['subcategory_name'] = name1
-
-
- 
-    # print(new_in_dict)
-
-
 
 xpath_dict = {
                 'Product Name': '//*[@id="aside-content"]/div[1]/h1',
@@ -167,7 +159,6 @@ xpath_dict = {
                 'Product Code': '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p',
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'
                 }  #use this dictionary inside the product_information method
-# product_dict_list = {}
 
 load_more = 3 #how many time to click the load more button
 page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
@@ -180,12 +171,10 @@ if __name__ == '__main__':
     product_search.extract_subcategory_name('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
     # for subcategory_index in range(1,3):
     #     new_in_dict['index'] =  subcategory_index
-    #     product_search.go_to_products_page(new_in_dict['subcategory_xpath'], new_in_dict['index']) #, dict['product_urls_xpath'])
-    #     product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
-    #     product_search.load_more_products()
-    #     product_search.go_to_products()
-    #     product_search.save_to_json()
-
-
+    product_search.go_to_products_page(new_in_dict['subcategory_xpath'], new_in_dict['index']) #, dict['product_urls_xpath'])
+    product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
+    product_search.load_more_products()
+    product_search.go_to_products()
     # AsosScraper.driver.quit()
     
+
