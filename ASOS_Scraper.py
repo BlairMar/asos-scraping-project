@@ -27,7 +27,9 @@ class AsosScraper:
             self.links.append(item.find_element_by_xpath(
                 './/a').get_attribute('href'))
         #  print(len(self.links))
-         return self.links
+        #  return self.links
+         print(self.links)
+     
 
      def click_buttons(self, button_xpath, n_clicks: int ): # n_clicks is the number of clicks 
         for i in range(1, n_clicks + 1):
@@ -88,9 +90,10 @@ class AsosScraper:
             # print(f'We are getting "Product {nr}" details')
             # print(self.product_information_dict)
             self.product_dict_list.update(self.product_information_dict)
+        #  print(f'This is the 
          print(self.product_dict_list)
             # return self.product_dict_list
-       
+         
      def get_details(self):
         try: #find details info
             for key in xpath_dict:
@@ -127,14 +130,36 @@ class AsosScraper:
          with open('JSON_details.json', mode='a+') as f:
              json.dump(self.product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
              f.write('\n')     
-     
-     def exit_driver(self):
-         self.driver.quit()
+    
+     def extract_subcategory_name(self, xpath: str):
+         xpaths_list = self.driver.find_elements_by_xpath(xpath)
+         self.names = []
+         for name in xpaths_list:
+            self.names.append(name.find_element_by_xpath(
+                './/a').text)
+         
+         names_list.extend(self.names)
+         return self.names        
+        #  print(self.names)
+  
 
      
-    
-New_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
- 'index': 0}
+   
+new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
+ 'index': int, 'subcategory_name': str}
+
+# names_list = []
+names_list = []
+
+for subcategory_index, name1 in zip(range(len(names_list)),names_list):
+    new_in_dict['index'] =  subcategory_index
+    new_in_dict['subcategory_name'] = name1
+
+
+ 
+    # print(new_in_dict)
+
+
 
 xpath_dict = {
                 'Product Name': '//*[@id="aside-content"]/div[1]/h1',
@@ -152,10 +177,16 @@ if __name__ == '__main__':
     product_search = AsosScraper(webdriver.Chrome(),'men')
     product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
     product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
-    product_search.go_to_products_page(New_in_dict['subcategory_xpath'], New_in_dict['index']) #, dict['product_urls_xpath'])
-    product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
-    product_search.load_more_products()
-    product_search.go_to_products()
-    product_search.save_to_json()
-    product_search.exit_driver()
+    # product_search.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
+    product_search.extract_subcategory_name('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
+    # for subcategory_index in range(1,3):
+    #     new_in_dict['index'] =  subcategory_index
+    #     product_search.go_to_products_page(new_in_dict['subcategory_xpath'], new_in_dict['index']) #, dict['product_urls_xpath'])
+    #     product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
+    #     product_search.load_more_products()
+    #     product_search.go_to_products()
+    #     product_search.save_to_json()
 
+
+    # AsosScraper.driver.quit()
+    
