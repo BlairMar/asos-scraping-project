@@ -124,6 +124,7 @@ class AsosScraper:
         
          for i,src in enumerate(self.src_list[:-1],1):   
             urllib.request.urlretrieve(src, f'images\{sub_category_name}\{sub_category_name}-product{self.product_number}.{i}.jpg')
+         return self.src_list
 
      def _save_to_json(self, product_dict_list: dict, sub_category_name: str):
          if not os.path.exists('json_files'): 
@@ -164,6 +165,9 @@ if __name__ == '__main__':
     product_search.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more) #this xpath is used to click the 'Load more' button
     product_search.load_more_products()
     product_search.go_to_products()
-    # AsosScraper.driver.quit()
+    product_search.driver.quit()
     
 
+#TODO: Connect to s3 bucket
+#TODO: Docstring all methods
+#TODO: Get >= 1000 samples (probably more). Scrape men + women -> all viable categories
