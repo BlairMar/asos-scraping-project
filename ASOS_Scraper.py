@@ -130,10 +130,11 @@ class AsosScraper:
         #with open('JSON-files\new-in\view-all.json', mode='a+') as f: 
          with open(f'json_files\{sub_category_name}_details.json', mode='a+') as f:
              json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
-             f.write('\n')
-
+             f.write('\n')     
+     
+   
 new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
- 'index': 1, 'subcategory_name': str}
+ 'index': 2}
 
 names_list = []
 for subcategory_index, name1 in zip(range(len(names_list)),names_list):
@@ -156,7 +157,6 @@ if __name__ == '__main__':
     product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
     product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
     # product_search.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
-    
     # for subcategory_index in range(1,3):
     #     new_in_dict['index'] =  subcategory_index
     product_search.go_to_products_page(new_in_dict['subcategory_xpath'], new_in_dict['index']) #, dict['product_urls_xpath'])
