@@ -113,8 +113,8 @@ class AsosScraper:
 
      def _download_images(self, sub_category_name: str):
          
-         if not os.path.exists('images'): #if there is no existing directory called "images", create one
-            os.makedirs('images')
+         if not os.path.exists(f'images\{sub_category_name}'): #if there is no existing directory called "images", create one
+            os.makedirs(f'images\{sub_category_name}')
 
          self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
          self.src_list = []                                        
@@ -122,7 +122,7 @@ class AsosScraper:
             self.src_list.append(xpath_src.get_attribute('src'))
         
          for i,src in enumerate(self.src_list[:-1],1):   
-            urllib.request.urlretrieve(src, f'images\{sub_category_name}-product{self.product_number}.{i}.jpg')
+            urllib.request.urlretrieve(src, f'images\{sub_category_name}\{sub_category_name}-product{self.product_number}.{i}.jpg')
 
      def _save_to_json(self, product_dict_list: dict, sub_category_name: str):
          if not os.path.exists('json_files'): 
@@ -130,22 +130,10 @@ class AsosScraper:
         #with open('JSON-files\new-in\view-all.json', mode='a+') as f: 
          with open(f'json_files\{sub_category_name}_details.json', mode='a+') as f:
              json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
-             f.write('\n')     
-     
-     def extract_subcategory_name(self, xpath: str):
-         
-         xpaths_list = self.driver.find_elements_by_xpath(xpath)
-         self.names = []
-         for name in xpaths_list:
-            self.names.append(name.find_element_by_xpath(
-                './/a').text)
+             f.write('\n')
 
-         return self.names        
-       
-
-   
 new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
- 'index': 2, 'subcategory_name': str}
+ 'index': 1, 'subcategory_name': str}
 
 names_list = []
 for subcategory_index, name1 in zip(range(len(names_list)),names_list):
@@ -168,7 +156,7 @@ if __name__ == '__main__':
     product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
     product_search.choose_category('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[2]')
     # product_search.extract_links('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
-    product_search.extract_subcategory_name('//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]')
+    
     # for subcategory_index in range(1,3):
     #     new_in_dict['index'] =  subcategory_index
     product_search.go_to_products_page(new_in_dict['subcategory_xpath'], new_in_dict['index']) #, dict['product_urls_xpath'])
