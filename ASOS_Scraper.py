@@ -7,6 +7,7 @@ import urllib.request
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
+from tqdm import tqdm
 
 class AsosScraper:
      def __init__(self, driver, gender: str):
@@ -71,12 +72,12 @@ class AsosScraper:
        
      def go_to_products(self):
         # url_counter = 0
-         n = 3
+         n = 10
          self.product_dict_list = {}
          self.sub_category_name = self.driver.find_element_by_xpath(
              '//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
         
-         for nr, url in itertools.islice(enumerate(self.product_urls,1),n): 
+         for nr, url in tqdm(itertools.islice(enumerate(self.product_urls,1),n)): 
             self.product_number = nr
             self.driver.get(url)
 
