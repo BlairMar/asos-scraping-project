@@ -46,12 +46,12 @@ class AsosScraper:
         self.a.move_to_element(category_button).perform()
         # this will hover over the "New in" category and show the 'New in' subcategories
         time.sleep(4)
-
-     # this method uses the "extract_links" method to access the first href (self.links[0]) in the "New in" subcategories list, which is "New in -> View all "
+        self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/header/div[3]/div/div[2]/div[2]/nav/div/div/div[4]/div/div[2]/ul/li[1]/ul/li')
+        self.driver.find_element_by_xpath('/html/body/div[2]/div/div[2]/header/div[3]/div/div[2]/div[2]/nav/div/div/div[4]/div/div[2]/ul/li[1]/ul/li/a[contains(text(),'New in')]')     # this method uses the "extract_links" method to access the first href (self.links[0]) in the "New in" subcategories list, which is "New in -> View all "
      def go_to_products_page(self, subcategory_xpath, index: int):
          self.extract_links(subcategory_xpath)  
          self.driver.get(self.links[index])
-            
+         self.driver.find_element_by_xpath("//button[@span[")  
      # this method will extract the products' hrefs products from (pagen_number = 4) pages
      def load_more_products(self): 
          sections_xpaths_list = []
