@@ -19,15 +19,11 @@ class AsosScraper:
         # object of ActionChains; it ads hover over functionality
         self.a = ActionChains(self.driver)
         self.links = []  # Initialize links, so if the user calls for extract_links inside other methods, it doesn't throw an error
-
-
+    
     def choose_category(self):
         self.links = [] #href links to be scraped
         category_list = ['Clothing', 'Shoes', 'Accessories', 'Sportswear', 'Face + Body']
         elements_to_hover = [] #selenium web elements for the categories in category_list
-        
-
-
         main_category_elements = self.driver.find_elements_by_xpath('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[*]')
         #print(main_category_elements)
         
@@ -36,36 +32,30 @@ class AsosScraper:
             if main_category_heading in category_list:
                 elements_to_hover.append(element)
                 #print(main_category_heading)
-        #print(elements_to_hover)       
-
+        #print(elements_to_hover)      
+        
         for element in elements_to_hover:
             self.a.move_to_element(element).perform()
             time.sleep(3)
-            subcategory_elements_list = self.driver.find_element_by_xpath('/html/body/div[3]/div/div[2]/header/div[3]/div/div[2]/div[2]/nav/div/div/div[4]/div/div[2]/ul/li[1]/ul').find_elements_by_tag_name("li")
-            #print(subcategory_elements_list)
+            subcategory_elements_list = self.driver.find_elements_by_xpath('/html/body/div[3]/div/div[2]/header/div[3]/div/div[2]/div[2]/nav/div/div/div[*]/div/div[2]/ul/li[1]/ul')
             
             for element in subcategory_elements_list:
+                subcategory_elements_li_tag = element.find_elements_by_tag_name("li")
+            #print(subcategory_elements_list)                              
                 
-                if element.find_element_by_tag_name("a").text == 'View all':
-                    self.links.append(element.find_element_by_xpath('.//a').get_attribute('href'))
-                    
-                elif element.find_element_by_tag_name("a").text == 'New in':
-                    self.links.append(element.find_element_by_xpath('.//a').get_attribute('href'))
-                
-                else:
-                    pass
-            
-            print(self.links)
-
-
-
-        
-
-
-
-        
-
-
+                for element in subcategory_elements_li_tag:
+                    try:
+                        if element.find_element_by_tag_name("a").text == 'View all':
+                            self.links.append(element.find_element_by_xpath('.//a').get_attribute('href'))
+                            break
+                        
+                        else:
+                            if element.find_element_by_tag_name("a").text == 'New in':
+                                self.links.append(element.find_element_by_xpath('.//a').get_attribute('href'))
+                            
+                    except:
+                            pass
+        print(self.links)
 
 '''
 #, main_category_xpath = '//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[*]'
