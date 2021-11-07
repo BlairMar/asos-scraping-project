@@ -72,33 +72,3 @@ product_search = AsosScraper(webdriver.Chrome(),'men')
 product_search.choose_category()
 product_search.driver.quit()
 
-def choose_category(self):
-        self.links = []
-        self.category_list = ['Clothing', 'Shoes', 'Accessories', 'Sportswear', 'Face + Body']
-        category_list_to_dict = [] 
-        main_category_elements = self.driver.find_elements_by_xpath('//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[*]')
-        
-        for element in main_category_elements:
-            main_category_heading = element.find_element_by_css_selector('span span').text
-            
-            if main_category_heading in self.category_list: 
-                category_list_to_dict.append(main_category_heading)
-                category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
-                category_list_to_dict.append(element) 
-         
-        category_dict = {category_list_to_dict[i]:[category_list_to_dict[i + 1],category_list_to_dict[i + 2]] for i in range(0, len(category_list_to_dict), 3)}  
-        
-        subcategory_elements_list = [] 
-        for i, (key, elements) in enumerate(category_dict.items()): 
-            self.a.move_to_element(elements[1]).perform() 
-            time.sleep(3)
-
-            subcategory_elements_list.append(self.driver.find_elements_by_xpath(f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a')) 
-            for element in subcategory_elements_list[i]:  
-                if element.text == 'View all' or element.text == 'New in':
-                   self.links.append(element.get_attribute('href'))  
-                   break
-                else:
-                   pass
-           
-        print(self.links)
