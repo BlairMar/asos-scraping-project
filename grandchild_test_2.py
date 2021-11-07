@@ -52,32 +52,10 @@ class AsosScraper:
                         else:
                             if element.find_element_by_tag_name("a").text == 'New in':
                                 self.links.append(element.find_element_by_xpath('.//a').get_attribute('href'))
-                            
+                                break
                     except:
                             pass
         print(self.links)
-
-'''
-#, main_category_xpath = '//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[*]'
-    def choose_category(self):
-        main_category_xpath = '//*[@id="chrome-sticky-header"]/div[2]/div[2]/nav/div/div/button[*]'
-        self.subcategory_xpath = '/html/body/div[3]/div/div[2]/header/div[3]/div/div[2]/div[2]/nav/div/div/div[4]/div/div[2]/ul/li[1]/ul/li[*]/a'
-        grandchildren = []
-        category_list = ['Clothing', 'Shoes', 'Accessories', 'Sportswear', 'Face + Body']
-        button_category_headings = self.driver.find_elements_by_xpath(main_category_xpath)
-
-        for button in button_category_headings:
-            grandchild = button.find_element_by_tag_name("span").find_element_by_tag_name("span").text
-            if grandchild in category_list:
-                #self.a.move_to_element(button).perform()
-                #self.go_to_products_page(main_category_xpath)
-            print(grandchild)
-            print(button)
-            grandchildren.append(grandchild)
-         
-        print(grandchildren)
-'''
-
 
 
 product_search = AsosScraper(webdriver.Chrome(),'men')
