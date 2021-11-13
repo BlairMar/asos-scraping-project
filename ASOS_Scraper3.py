@@ -71,6 +71,7 @@ class AsosScraper:
                     break
                 elif element.text == 'New in':
                     temp = element
+                    # break
             else:
                 self.hrefs.append(temp.get_attribute('href'))
         
