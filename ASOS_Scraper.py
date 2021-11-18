@@ -6,27 +6,43 @@ import urllib.request
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support import expected_conditions as EC, wait
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from tqdm import tqdm
 import boto3
 import tempfile
 import shutil
 
-s3_client =boto3.client('s3')
+
+# options = webdriver.ChromeOptions()
+# options.add_argument('--headless')
+s3_client = boto3.client('s3')
 class AsosScraper:
-     def __init__(self, driver, gender: str):
+     def __init__(self, driver):
         self.root = "https://www.asos.com/"
-        self.gender = gender
-        URL = self.root + gender
+        self.gender_dict = {'men':2,'women':1}
+        # self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
         self.driver = driver
-        driver.get(URL)
-        # object of ActionChains; it ads hover over functionality
-        self.a = ActionChains(self.driver)
+        driver.get(self.root)
+        self.a = ActionChains(self.driver) # object of ActionChains; it ads hover over functionality
         self.links = []  # Initialize links, so if the user calls for extract_links inside other methods, it doesn't throw an error
-        self.big_hrefs_list = []
+        self.all_categories_hrefs = []
      # given a common xpath, this method extracts the unique xpaths in a list and get the 'href' attribute for every unique xpath of an webelement
+    
+     def _get_gender_hrefs(self):
+        for key,value in self.gender_dict.items():
+            self.driver.get(self.root + f'{key}')
+            self._choose_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value}]/nav/div/div/button[*]')
+            self.all_categories_hrefs.extend(self.gender_hrefs)
+        return self.all_categories_hrefs
+    
+     def primary_method(self):
+         self._get_gender_hrefs()
+         for href in self.all_categories_hrefs:
+            self.driver.get(href)
+            self._load_more_products()
+            self._go_to_products()
+            time.sleep(5)
+    
      def _extract_links(self, xpath: str):
          xpaths_list = self.driver.find_elements_by_xpath(xpath)
          self.links = []
@@ -45,43 +61,37 @@ class AsosScraper:
             time.sleep(3)
         return True
      
-     def choose_category(self,value:int):
-        self.hrefs = []
-        self.category_list = ['Clothing', 'Shoes']
-        category_list_to_dict = [] 
-        main_category_elements = self.driver.find_elements_by_xpath(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value}]/nav/div/div/button[*]')
+     def _choose_category(self,xpath:str):
+        self.gender_hrefs = [] #href links to be scraped
+        self.category_list = ['Clothing', 'Shoes', 'Accessories', 'Sportswear', 'Face + Body']
+        category_list_to_dict = [] #see below, this list will contain the category name, the number of the category button and the corresponding webelement (button) 
+        main_category_elements = self.driver.find_elements_by_xpath(xpath)
         
         for element in main_category_elements:
             main_category_heading = element.find_element_by_css_selector('span span').text
             
-            if main_category_heading in self.category_list: 
-                category_list_to_dict.append(main_category_heading)
+            if main_category_heading in self.category_list:  
+                category_list_to_dict.append(main_category_heading) 
                 category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
                 category_list_to_dict.append(element) 
-         
-        category_dict = {category_list_to_dict[i]:[category_list_to_dict[i + 1],category_list_to_dict[i + 2]] for i in range(0, len(category_list_to_dict), 3)}  
         
+       
+        category_dict = {category_list_to_dict[i]:[category_list_to_dict[i + 1],category_list_to_dict[i + 2]] for i in range(0, len(category_list_to_dict), 3)}  
         subcategory_elements_list = [] 
         for i, (key, elements) in enumerate(category_dict.items()): 
-            elements[1].click()
-            subcategory_elements_list.append(self.driver.find_elements_by_xpath(f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a')) 
-            for element in subcategory_elements_list[i]:  #for every element inside every nested list, extract the href only for the webelements containg the 'view all' or 'new in' text
+            elements[1].click()  
+            time.sleep(3)
+
+            subcategory_elements_list.append(self.driver.find_elements_by_xpath(f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a'))          
+            for element in subcategory_elements_list[i]:  
                 if element.text == 'View all':
-                    self.hrefs.append(element.get_attribute('href'))
+                    self.gender_hrefs.append(element.get_attribute('href'))
                     break
-                elif element.text == 'New in':
-                    temp = element
+                elif element.text == 'New in': 
+                    temp = element        
             else:
-                self.hrefs.append(temp.get_attribute('href'))
-        
-        print(self.hrefs)
-        # self.big_hrefs_list.extend(self.hrefs)
-        # print(self.big_hrefs_list)
-        for href in self.hrefs:
-            self.driver.get(href)
-            self._load_more_products()
-            self._go_to_products()
-            time.sleep(5)
+                self.gender_hrefs.append(temp.get_attribute('href'))        
+        return self.gender_hrefs
  
      # this method will extract the products' hrefs products from (page_number = 4) pages
      def _load_more_products(self): 
@@ -95,7 +105,8 @@ class AsosScraper:
              self._extract_links(section_xpath)
              list_all_products += self.links  #self.links will extract 72 hrefs for every section_xpath and will be added to the list_all_products
          self.product_urls = list_all_products # save the list with hrefs in another variable that will be reffered to in the following methods
-        
+         time.sleep(3)
+
      def _go_to_products(self):
          n = 3
          self.product_dict_list = {}
@@ -114,7 +125,9 @@ class AsosScraper:
                                                'Colour': []
                                                }
                                              }
+            time.sleep(3)
             self._get_details()
+            time.sleep(3)
             self._download_images(self.sub_category_name)
             self.product_dict_list.update(self.product_information_dict)     
          self._save_to_json(self.product_dict_list, self.sub_category_name)
@@ -189,11 +202,9 @@ xpath_dict = {
 load_more = 3 #how many time to click the load more button
 page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
 if __name__ == '__main__':
-    product_search = AsosScraper(webdriver.Chrome(),'men')
-    product_search.click_buttons('//button[@class="g_k7vLm _2pw_U8N _2BVOQPV"]', 1) #this xpath is for accepting the cookies
-    product_search.choose_category(2)
-    product_search.driver.get("https://www.asos.com/women")
-    product_search.choose_category(1)
+    product_search = AsosScraper(webdriver.Chrome())
+    product_search.click_buttons('//*[@id="chrome-header"]/header/div[1]/div/div/button', 1) #this xpath is for accepting the cookies                         
+    product_search.primary_method()
     product_search.driver.quit()
     
 
