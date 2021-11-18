@@ -132,6 +132,7 @@ class AsosScraper:
          return len(self.product_urls)
 
      def _go_to_products(self):
+         # Method to go to products on the webpage and collect information
          n = 3
          self.product_dict_list = {}
          self.sub_category_name = self.driver.find_element_by_xpath(
@@ -157,6 +158,7 @@ class AsosScraper:
             
           
      def _get_details(self):
+         # Method to collect the details and store them inside a dictionary
         try: #find details info
             for key in xpath_dict:
                 if key == 'Product Details':
@@ -174,6 +176,8 @@ class AsosScraper:
         return self.product_information_dict
 
      def _download_images(self, sub_category_name: str):
+         # Method to download the images and save them in an organised file structure
+
          self.xpath_src_list = self.driver.find_elements_by_xpath('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img')
          self.src_list = []                                        
          for xpath_src in self.xpath_src_list:
@@ -190,6 +194,7 @@ class AsosScraper:
          return self.src_list
 
      def _save_to_json(self, product_dict_list: dict, sub_category_name: str): 
+         # Method to save outputs from _get_details into a .json format
          with open(f'json_files\{sub_category_name}_details.json', mode='a+') as f:
              json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
              f.write('\n')
