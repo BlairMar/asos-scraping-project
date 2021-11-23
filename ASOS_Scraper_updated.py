@@ -22,19 +22,28 @@ from input_file import User_input
 
 
 class AsosScraper:
-    #  numbers_list = []
+    
+     xpath_dict = {
+                'Product Name': '//*[@id="aside-content"]/div[1]/h1',
+                'Price': '//*[@id="product-price"]/div/span[2]/span[4]/span[1]',
+                'Product Details' : '//*[@id="product-details-container"]/div[1]/div/ul/li',
+                'Product Code': '//*[@id="product-details-container"]/div[2]/div[1]/p',                                   
+                'Colour': '//*[@id="product-colour"]/section/div/div/span'    
+                }  #use this dictionary inside the product_information method
+     
      def __init__(self):
     #  def __init__(self,driver,gender:str,number_of_products,location):
         # self.gender = gender
         self.root = "https://www.asos.com/"
-        # self.driver = driver
-        self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
+        self.driver = webdriver.Chrome()
+        # self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
         self.driver.get(self.root)
         self.a = ActionChains(self.driver) # object of ActionChains; it ads hover over functionality
         self.links = []  # Initialize links, so if the user calls for extract_links inside other methods, it doesn't throw an error
         self.all_categories_hrefs = []
      # given a common xpath, this method extracts the unique xpaths in a list and get the 'href' attribute for every unique xpath of an webelement
-    
+        self.load_more = instance_choices.products_per_category // 72 #self.load_more = method(scrape_or_not)
+        
      def _get_gender_hrefs(self):
         for key,value in User_input.gender_dict.items():
             self.driver.get(self.root + f'{key}')
@@ -89,23 +98,15 @@ class AsosScraper:
                 return True
             except: 
                pass
-     
-     def _get_list_of_categories(self,xpath):
-         main_category_elements = self.driver.find_elements_by_xpath(xpath)
-        
-         for element in main_category_elements:
-            main_category_heading = element.find_element_by_css_selector('span span').text
-
+    
      def _scrape_category(self, xpath:str, category_list: list ):
         self.gender_hrefs = [] #href links to be scraped
         self.category_list = category_list
         category_list_to_dict = [] #see below, this list will contain the category name, the number of the category button and the corresponding webelement (button) 
         main_category_elements = self.driver.find_elements_by_xpath(xpath)
        
-        
         for element in main_category_elements:
             main_category_heading = element.find_element_by_css_selector('span span').text
-            
             if main_category_heading in self.category_list:  
                 category_list_to_dict.append(main_category_heading) 
                 category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
@@ -132,9 +133,10 @@ class AsosScraper:
  
      # this method will extract the products' hrefs products from (page_number = 4) pages
      def _load_more_products(self): 
-         self.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more)
+         self.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', self.load_more)
          sections_xpaths_list = []
-         for _ in range(1, page_number): #page_number = load_more + 2 
+         page_number = self.load_more + 2
+         for _ in range(1, page_number): #load_more + 2 = page_number
             sections_xpaths_list.append(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section[{_}]/article')  
          
          list_all_products = []
@@ -143,6 +145,18 @@ class AsosScraper:
              list_all_products += self.links  #self.links will extract 72 hrefs for every section_xpath and will be added to the list_all_products
          self.product_urls = list_all_products # save the list with hrefs in another variable that will be reffered to in the following methods
          time.sleep(2)
+     
+     def load_more():
+         if scrape_whole_website:
+
+         enumerate(while (load_more_button == True)): #load_more_button = find_element_by_xpath(load_more_xpath)
+             
+                click()
+                time.sleep(1)
+         return enumerate value #is load_more variable, therefore this value + 2 = page_number variable
+
+         self.load_more = instance_choices.products_per_category // 72
+        
 
      def go_to_products(self):
          n = int(instance_choices.products_per_category) 
@@ -170,14 +184,14 @@ class AsosScraper:
          
      def _get_details(self):
         try: #find details info
-            for key in xpath_dict:
+            for key in self.xpath_dict:
                 if key == 'Product Details':
-                    details_container = self.driver.find_elements_by_xpath(xpath_dict[key])
+                    details_container = self.driver.find_elements_by_xpath(self.xpath_dict[key])
                     for detail in details_container:
                         self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append(detail.text)
 
                 else:
-                    dict_key = self.driver.find_element_by_xpath(xpath_dict[key])
+                    dict_key = self.driver.find_element_by_xpath(self.xpath_dict[key])
                     self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append(dict_key.text)
                         
         except:
@@ -203,15 +217,10 @@ class AsosScraper:
          if not os.path.exists(f'json_files'):
              os.makedirs(f'json_files')
          
-         with open(f'json_files/{sub_category_name}_details.json', mode='a+') as f:
-            json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
+         with open(f'json_files/{sub_category_name}_details.json', mode='a+', encoding='utf-8-sig') as f:
+            json.dump(product_dict_list, f, indent=4, ensure_ascii=False) 
             f.write('\n')  
             f.close() 
-            # data = json.load(f)
-            # for dict in data:
-            #     for item in dict:
-            #         item['Price'] = item['Price'].replace('\u00a3','').add(' pounds')
-            # json.dump(data,f)
 
      def _download_images_to_s3(self, sub_category_name: str):
         self._get_images_src()
@@ -225,8 +234,8 @@ class AsosScraper:
         
      def _save_to_json_to_s3(self, product_dict_list: dict, sub_category_name:str,):
         with tempfile.TemporaryDirectory() as temp_dir:
-            with open(f'{temp_dir}/{sub_category_name}_details.json', mode='a+') as f:
-                json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
+            with open(f'{temp_dir}/{sub_category_name}_details.json', mode='a+', encoding='utf-8-sig') as f:
+                json.dump(product_dict_list, f, indent=4, ensure_ascii=False) #'indent = x' to format output in json file, visually better
                 f.write('\n')
                 f.flush()
                 time.sleep(3)
@@ -264,25 +273,6 @@ class AsosScraper:
      def set_s3_connection(self):
             self.s3_client = boto3.client('s3')
             
-
-new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
- 'index': 1, 'subcategory_name': str}
-
-names_list = []
-for subcategory_index, name1 in zip(range(len(names_list)),names_list):
-    new_in_dict['index'] =  subcategory_index
-    new_in_dict['subcategory_name'] = name1
-
-xpath_dict = {
-                'Product Name': '//*[@id="aside-content"]/div[1]/h1',
-                'Price': '//*[@id="product-price"]/div/span[2]/span[4]/span[1]',
-                'Product Details' : '//*[@id="product-details-container"]/div[1]/div/ul/li',
-                'Product Code': '//*[@id="product-details-container"]/div[2]/div[1]/p',                                   
-                'Colour': '//*[@id="product-colour"]/section/div/div/span'    
-                }  #use this dictionary inside the product_information method
-
-load_more = 3 #how many time to click the load more button
-page_number = load_more + 2 #page number is the range of pages we want to display - range (1,pagenumber = 5) means that we will display 4 pages
 if __name__ == '__main__':
     instance_choices = User_input()
     instance_choices.scrape_or_not()
@@ -291,12 +281,8 @@ if __name__ == '__main__':
     product_search.primary_method()
     product_search.driver.quit()
     
-# nr_products = 1000
-# page = 72 
-# load_more = 
-if instance_choices.number_of_products <= 72:
-    load_more = 0
-elif instance_choices.number_of_products >72:
-    load_more = instance_choices.number_of_products % 72
+
+
+    
 
 

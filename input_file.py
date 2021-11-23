@@ -8,7 +8,6 @@ class User_input():
     
     def __init__(self):
         self.gender = ""
-        self.number_of_products = 0
         self.location = ""
         
     print('Welcome to the ASOS webscraper!')
@@ -103,7 +102,7 @@ class User_input():
         print(self.gender_dict)
         self.products_per_category = int(input('How many products per category? Introduce a number: '))
         print(f'You will scrape a total of {self.total_number_of_products(self.products_per_category)} products')
-        return self.gender_dict, self.number_of_products   
+        return self.gender_dict 
 
     def total_number_of_products(self, products_per_category):
         total_of_products = (len(self.men_categories_list) + len(self.women_categories_list)) * products_per_category
