@@ -15,24 +15,21 @@ import tempfile
 import shutil
 from input_file import User_input
 
+
 # options = webdriver.ChromeOptions()
 # options.add_argument('--headless')
 # s3_client = boto3.client('s3')
 
 
 class AsosScraper:
-     category_list = ['Clothing', 'Shoes', 'Accessories', 'Sportswear', 'Face + Body']
-     def __init__(self, driver):
+    #  numbers_list = []
+     def __init__(self):
     #  def __init__(self,driver,gender:str,number_of_products,location):
         # self.gender = gender
-        self.root = "https://www.asos.com/" 
-        # self.gender_dict = User_input.addItemToDictionary
-        self.driver = driver
+        self.root = "https://www.asos.com/"
+        # self.driver = driver
+        self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
         self.driver.get(self.root)
-        # self.location = location
-        # if location == 's3_bucket':
-        #     self.set_s3_connection()
-        # self.number_of_products = number_of_products
         self.a = ActionChains(self.driver) # object of ActionChains; it ads hover over functionality
         self.links = []  # Initialize links, so if the user calls for extract_links inside other methods, it doesn't throw an error
         self.all_categories_hrefs = []
@@ -40,19 +37,37 @@ class AsosScraper:
     
      def _get_gender_hrefs(self):
         for key,value in User_input.gender_dict.items():
-            print(key,value)
-        #     self.driver.get(self.root + f'{key}')
-        #     self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', value[1])
-        #     self.all_categories_hrefs.extend(self.gender_hrefs)
-        # return self.all_categories_hrefs
+            self.driver.get(self.root + f'{key}')
+            self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', value[1])
+            self.all_categories_hrefs.extend(self.gender_hrefs)
+        # print(self.all_categories_hrefs)
+        return self.all_categories_hrefs
     
-     def primary_method(self):
+     
+     '''
+     These two methods would show the total number of products inside one subactegory e.g. - total number
+     of products in men/shoes/view-all
+
+     def products_number(self):
+         number = int(self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/p').text.split()[-2].replace(",",""))
+         return number
+         
+     def list_with_products_numbers(self):
          self._get_gender_hrefs()
-         for href in self.gender_hrefs:
+         for href in self.all_categories_hrefs:
+            self.driver.get(href)
+            self.numbers_list.append(self.products_number())
+         print(self.numbers_list) 
+       # return self.numbers_list
+       
+    ''' 
+     def primary_method(self):   #RENAME
+         self._get_gender_hrefs()
+         for href in self.all_categories_hrefs:
             self.driver.get(href)
             self._load_more_products()
-            self._go_to_products()
-            time.sleep(5)
+            self.go_to_products()
+            time.sleep(2)
     
      def _extract_links(self, xpath: str):
          xpaths_list = self.driver.find_elements_by_xpath(xpath)
@@ -66,11 +81,14 @@ class AsosScraper:
      
      def click_buttons(self, button_xpath, n_clicks: int ): # n_clicks is the number of clicks 
         for i in range(1, n_clicks + 1):
-            button = self.driver.find_element_by_xpath(button_xpath)
-            button.click()
-            i += 1
-            time.sleep(3)
-        return True
+            try:
+                button = self.driver.find_element_by_xpath(button_xpath)
+                button.click()
+                i += 1
+                time.sleep(3)
+                return True
+            except: 
+               pass
      
      def _get_list_of_categories(self,xpath):
          main_category_elements = self.driver.find_elements_by_xpath(xpath)
@@ -108,14 +126,15 @@ class AsosScraper:
                 elif element.text == 'New in': 
                     temp = element        
             else:
-                self.gender_hrefs.append(temp.get_attribute('href'))        
+                self.gender_hrefs.append(temp.get_attribute('href'))     
+        # print(self.gender_hrefs)   
         return self.gender_hrefs
  
      # this method will extract the products' hrefs products from (page_number = 4) pages
      def _load_more_products(self): 
          self.click_buttons('//*[@id="plp"]/div/div/div[2]/div/a', load_more)
          sections_xpaths_list = []
-         for _ in range(1, page_number):
+         for _ in range(1, page_number): #page_number = load_more + 2 
             sections_xpaths_list.append(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section[{_}]/article')  
          
          list_all_products = []
@@ -123,37 +142,32 @@ class AsosScraper:
              self._extract_links(section_xpath)
              list_all_products += self.links  #self.links will extract 72 hrefs for every section_xpath and will be added to the list_all_products
          self.product_urls = list_all_products # save the list with hrefs in another variable that will be reffered to in the following methods
-         time.sleep(3)
+         time.sleep(2)
 
-     def go_to_products(self, number_of_products: int):
-         self.n = number_of_products
+     def go_to_products(self):
+         n = int(instance_choices.products_per_category) 
          self.product_dict_list = {}
          self.sub_category_name = self.driver.find_element_by_xpath(
              '//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
         
-         for nr, url in tqdm(itertools.islice(enumerate(self.product_urls,1),self.n)): 
+         for nr, url in tqdm(itertools.islice(enumerate(self.product_urls,1),n)): 
             self.product_number = nr
             self.driver.get(url)
 
             self.product_information_dict = {f'{self.sub_category_name}-product-{self.product_number}': 
                                               {'Product Name': [],
                                                'Price': [],
-                                               'Product Details' : [],
                                                'Product Code': [],
-                                               'Colour': []
+                                               'Colour': [],
+                                               'Product Details' : []
                                                }
-                                             }
-            time.sleep(3)
+                                             } 
+                                              
             self._get_details()
-            time.sleep(3)
-            # self.download_images_function 
-            # self.images, self.json_files = self.local_machine_or_s3()
-            self._download_images(self.sub_category_name)
-            self.product_dict_list.update(self.product_information_dict)     
-         self._save_to_json(self.product_dict_list, self.sub_category_name)
+            self.download_images(self.sub_category_name)
+            self.product_dict_list.update(self.product_information_dict)
+         self.save_to_json(self.product_dict_list, self.sub_category_name)
          
-            
-          
      def _get_details(self):
         try: #find details info
             for key in xpath_dict:
@@ -165,7 +179,7 @@ class AsosScraper:
                 else:
                     dict_key = self.driver.find_element_by_xpath(xpath_dict[key])
                     self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append(dict_key.text)
-
+                        
         except:
             self.product_information_dict[f'{self.sub_category_name}-product-{self.product_number}'][key].append('No information found')
         
@@ -176,62 +190,80 @@ class AsosScraper:
          self.src_list = []                                        
          for xpath_src in self.xpath_src_list:
             self.src_list.append(xpath_src.get_attribute('src'))
-     
-     def _download_images(self, sub_category_name:str):
-         if self.location == 's3 bucket':
-             self._download_images_to_s3(sub_category_name)
-         else:
-             self._download_images_locally(sub_category_name)
     
-     def _save_to_json(self, product_dict_list:dict, sub_category_name:str):
-         if self.location == 's3 bucket':
-             self._save_to_json_to_s3(product_dict_list, sub_category_name)
-         else:
-             self._save_to_json_locally(product_dict_list, sub_category_name)
-
      def _download_images_locally(self, sub_category_name: str):
-         while self.n <= 30:
-             if not os.path.exists(f'images/{sub_category_name}'):
-                 os.makedirs(f'images/{sub_category_name}')
-                 self._get_images_src()
-                 for i,src in enumerate(self.src_list[:-1],1):   
-                     urllib.request.urlretrieve(src, f'images/{sub_category_name}/image_{i}.jpg')
+         if not os.path.exists(f'images/{sub_category_name}'):
+             os.makedirs(f'images/{sub_category_name}')
+         
+         self._get_images_src()
+         for i,src in enumerate(self.src_list[:-1],1):
+            urllib.request.urlretrieve(src, f'images/{sub_category_name}/{sub_category_name}-product{self.product_number}.{i}.jpg')
      
      def _save_to_json_locally(self, product_dict_list: dict, sub_category_name:str):
-         if not os.path.exists(f'json_files/{sub_category_name}_details.json'):
-             os.makedirs(f'json_files/{sub_category_name}_details.json')
+         if not os.path.exists(f'json_files'):
+             os.makedirs(f'json_files')
+         
          with open(f'json_files/{sub_category_name}_details.json', mode='a+') as f:
+            json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
+            f.write('\n')  
+            f.close() 
+            # data = json.load(f)
+            # for dict in data:
+            #     for item in dict:
+            #         item['Price'] = item['Price'].replace('\u00a3','').add(' pounds')
+            # json.dump(data,f)
+
+     def _download_images_to_s3(self, sub_category_name: str):
+        self._get_images_src()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for i,src in enumerate(self.src_list[:-1],1):
+                urllib.request.urlretrieve(src, f'{temp_dir}/image_{i}.jpg')
+                self.s3_client.upload_file(f'{temp_dir}/image_{i}.jpg','asosscraperbucket',
+                f'images/{sub_category_name}/{sub_category_name}-product{self.product_number}.{i}.jpg')
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        
+     def _save_to_json_to_s3(self, product_dict_list: dict, sub_category_name:str,):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(f'{temp_dir}/{sub_category_name}_details.json', mode='a+') as f:
                 json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
                 f.write('\n')
+                f.flush()
+                time.sleep(3)
+                self.s3_client.upload_file(f'{temp_dir}/{sub_category_name}_details.json', 'asosscraperbucket', f'json_files/{sub_category_name}_details.json')
+                
+        if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir) 
+    
+     def download_images(self, *args):
+        if instance_choices.location == 'local_machine & s3_bucket':
+            self.set_s3_connection()
+            self._download_images_locally(*args)
+            self._download_images_to_s3(*args)
+
+        elif instance_choices.location == 'local_machine':
+            self._download_images_locally(*args)
+
+        elif instance_choices.location == 's3_bucket':
+            self.set_s3_connection()
+            self._download_images_to_s3(*args)
+                
+     def save_to_json(self,*args):
+        if instance_choices.location == 'local_machine & s3_bucket':
+            self.set_s3_connection()
+            self._save_to_json_locally(*args)
+            self._save_to_json_to_s3(*args)
+
+        elif instance_choices.location == 'local_machine':
+            self._save_to_json_locally(*args)
+                
+        elif instance_choices.location == 's3_bucket':
+            self.set_s3_connection()
+            self._save_to_json_to_s3(*args)
 
      def set_s3_connection(self):
-         self.s3_client = boto3.client('s3')
-        
-         
-     def _download_images_to_s3(self, sub_category_name: str):
-         self._get_images_src()
-         while self.n <= 30:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                for i,src in enumerate(self.src_list[:-1],1):   
-                    urllib.request.urlretrieve(src, f'{temp_dir}/image_{i}.jpg')
-                    self.s3_client.upload_file(f'{temp_dir}/image_{i}.jpg','asosscraperbucket',
-                    f'images/{sub_category_name}/{sub_category_name}-product{self.product_number}.{i}.jpg')
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-     
-     def _save_to_json_to_s3(self, product_dict_list: dict, sub_category_name:str,):
-         with tempfile.TemporaryDirectory() as temp_dir:
-             with open(f'{temp_dir}/{sub_category_name}_details.json', mode='a+') as f:
-                 json.dump(product_dict_list, f, indent=4) #'indent = x' to format output in json file, visually better
-                 f.write('\n')
-                 f.flush()
-                 time.sleep(3)
-                 self.s3_client.upload_file(f'{temp_dir}/{sub_category_name}_details.json', 'asosscraperbucket', f'json_files/{sub_category_name}_details.json')
-               
-         if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-
-
+            self.s3_client = boto3.client('s3')
+            
 
 new_in_dict = {'subcategory_xpath': '//*[@id="029c47b3-2111-43e9-9138-0d00ecf0b3db"]/div/div[2]/ul/li[1]/ul/li[*]',
  'index': 1, 'subcategory_name': str}
@@ -245,8 +277,8 @@ xpath_dict = {
                 'Product Name': '//*[@id="aside-content"]/div[1]/h1',
                 'Price': '//*[@id="product-price"]/div/span[2]/span[4]/span[1]',
                 'Product Details' : '//*[@id="product-details-container"]/div[1]/div/ul/li',
-                'Product Code': '/html/body/div[2]/div/main/div[2]/section[2]/div/div/div/div[2]/div[1]/p',
-                'Colour': '//*[@id="product-colour"]/section/div/div/span'
+                'Product Code': '//*[@id="product-details-container"]/div[2]/div[1]/p',                                   
+                'Colour': '//*[@id="product-colour"]/section/div/div/span'    
                 }  #use this dictionary inside the product_information method
 
 load_more = 3 #how many time to click the load more button
@@ -254,13 +286,17 @@ page_number = load_more + 2 #page number is the range of pages we want to displa
 if __name__ == '__main__':
     instance_choices = User_input()
     instance_choices.scrape_or_not()
-    product_search = AsosScraper(webdriver.Chrome())
-    product_search._get_gender_hrefs()
-    # product_search.click_buttons('//*[@id="chrome-header"]/header/div[1]/div/div/button', 1) #this xpath is for accepting the cookies                         
-    # product_search.primary_method()
-    # product_search.driver.quit()
+    product_search = AsosScraper() 
+    product_search.click_buttons('//*[@id="chrome-header"]/header/div[1]/div/div/button', 1) #this xpath is for accepting the cookies                         
+    product_search.primary_method()
+    product_search.driver.quit()
     
 # nr_products = 1000
 # page = 72 
 # load_more = 
+if instance_choices.number_of_products <= 72:
+    load_more = 0
+elif instance_choices.number_of_products >72:
+    load_more = instance_choices.number_of_products % 72
+
 
