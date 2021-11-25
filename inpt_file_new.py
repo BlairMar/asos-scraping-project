@@ -1,16 +1,19 @@
-from threading import local
+from ASOS_Scraper_updated import AsosScraper
+from selenium import webdriver
 
 
-
-class User_input():
+class User_input(AsosScraper):
+    driver = webdriver.Chrome()
     gender_dict = {}
-    options_men = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topman', 'Sportswear', 'Face + Body']
-    options_women = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topshop', 'Sportswear', 'Face + Body']
     
+
     def __init__(self):
         self.gender = ""
         self.location = ""
-        self.scrape_all_website_or_not()
+    
+    options_men, options_women = AsosScraper.get_categories_options_from_ASOS
+    print(options_men,options_women)
+    
         
     print('Welcome to the ASOS webscraper!')
     def S3_bucket_or_local_machine(self):
@@ -31,11 +34,10 @@ class User_input():
                 answer_locally = input('Do you want to save the data to your local machine?[y/n]')
                 answer_s3_bucket = input('Do you want to save the data to a public S3_bucket?[y/n]')
 
-    def scrape_all_website_or_not(self):
+    def scrape_or_not(self):
         answer = input('Do you want to scrape the whole website? [y/n]: ')
         if answer == 'y':
-            self.scrape_all_website
-            
+            self.scrape_all_website()
         if answer == 'n':
             self.m = input('Do you want to scrape the men section?[y/n]')
             self.w = input('Do you want to scrape the women section?[y/n]')
@@ -54,7 +56,7 @@ class User_input():
 
             else: 
                 print('Invalid answers. Please choose a valid answer!')
-                self.scrape_all_website_or_not()
+                self.scrape_or_not()
         self.S3_bucket_or_local_machine()
 
     def men_no_women_no(self):
@@ -121,8 +123,7 @@ class User_input():
         gender = 'women'
         self.gender_dict.update(self.addItemToDictionary(gender, 1, self.options_women))
         # print(self.gender_dict)
-        # return self.gender_dict
-        return True, self.gender_dict
+        return self.gender_dict
         
 
 
@@ -143,7 +144,6 @@ class User_input():
         return categories_choice
             
 
-# instance_choices = User_input()
+instance_choices = User_input()
+instance_asos = AsosScraper()
 # instance_choices.scrape_or_not()
-
-                                     

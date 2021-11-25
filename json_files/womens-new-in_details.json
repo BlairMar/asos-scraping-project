@@ -1,0 +1,43 @@
+﻿{
+    "womens-new-in-product-1": {
+        "Product Name": [
+            "Topshop padded scarf in black"
+        ],
+        "Price": [
+            "£23.00"
+        ],
+        "Product Code": [
+            "103738413"
+        ],
+        "Colour": [
+            "BLACK"
+        ],
+        "Product Details": [
+            "Layer up",
+            "Padded design ",
+            "Rectangle cut",
+            "Hand pockets "
+        ]
+    },
+    "womens-new-in-product-2": {
+        "Product Name": [
+            "Bershka oversized jumper in brown"
+        ],
+        "Price": [
+            "£22.99"
+        ],
+        "Product Code": [
+            "111573372"
+        ],
+        "Colour": [
+            "brown"
+        ],
+        "Product Details": [
+            "Exclusive to ASOS",
+            "Crew neck",
+            "Drop shoulders",
+            "Ribbed trims ",
+            "Oversized fit"
+        ]
+    }
+}

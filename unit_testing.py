@@ -89,12 +89,6 @@ class ASOS_Webscraper_Tests(unittest.TestCase):
 
 unittest.main(argv=[''], verbosity=2, exit=False)
 
-
-
-
-
-
-        
 # Test that the functions goes to websites. 
 # In hypothesis, there's a module which tests URLs.
 # For accept cookies, could send a bunch of xpaths which share the element of the 

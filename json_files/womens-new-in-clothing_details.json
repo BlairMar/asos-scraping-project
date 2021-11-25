@@ -1,0 +1,45 @@
+﻿{
+    "womens-new-in-clothing-product-1": {
+        "Product Name": [
+            "Bershka oversized jumper in brown"
+        ],
+        "Price": [
+            "£22.99"
+        ],
+        "Product Code": [
+            "111573372"
+        ],
+        "Colour": [
+            "brown"
+        ],
+        "Product Details": [
+            "Exclusive to ASOS",
+            "Crew neck",
+            "Drop shoulders",
+            "Ribbed trims ",
+            "Oversized fit"
+        ]
+    },
+    "womens-new-in-clothing-product-2": {
+        "Product Name": [
+            "Bershka oversized half zip sweat with Vermont graphic in grey"
+        ],
+        "Price": [
+            "£19.99"
+        ],
+        "Product Code": [
+            "111498380"
+        ],
+        "Colour": [
+            "white"
+        ],
+        "Product Details": [
+            "Act casual",
+            "High neck",
+            "Partial zip fastening ",
+            "Drop shoulders",
+            "'Vermont' print to chest",
+            "Oversized fit"
+        ]
+    }
+}
