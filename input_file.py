@@ -1,17 +1,39 @@
 from threading import local
+from unicodedata import category
+# input_dict = 
+# {
+# scrape_whole_website = True    python asosscraper.py -w -ms -wc 
+# #   options_men = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topman', 'Sportswear', 'Face + Body']
+# #   options_women = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topshop', 'Sportswear', 'Face + Body']
+# Cate['New in',  'Shoes', , 'Topman', 'Sportswear', 'Face + Body']
+# }
 
 
+# README 
+# in the docker file include desired flags, which are:
+#  -wc flag is womens clothing category
 
-class User_input():
+
+# Dockerfile
+# RUN 
+# asosscraper.py -wc -ws -wa
+# asosscraper.py -w 
+# asosscraper.py -ms
+
+
+class UserInput():
     gender_dict = {}
     options_men = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topman', 'Sportswear', 'Face + Body']
     options_women = ['New in', 'Clothing', 'Shoes', 'Accessories', 'Topshop', 'Sportswear', 'Face + Body']
+    variable1 = False
+    products_per_category = 0
+
     
     def __init__(self):
         self.gender = ""
         self.location = ""
         self.scrape_all_website_or_not()
-        
+    
     print('Welcome to the ASOS webscraper!')
     def S3_bucket_or_local_machine(self):
         answer_locally = input('Do you want to save the data to your local machine?[y/n]')
@@ -34,9 +56,11 @@ class User_input():
     def scrape_all_website_or_not(self):
         answer = input('Do you want to scrape the whole website? [y/n]: ')
         if answer == 'y':
-            self.scrape_all_website
+            self.variable1 = True
+            self.scrape_all_website()
             
         if answer == 'n':
+            self.variable1 = False
             self.m = input('Do you want to scrape the men section?[y/n]')
             self.w = input('Do you want to scrape the women section?[y/n]')
 
@@ -115,14 +139,14 @@ class User_input():
         gender_dict = {gender:[gender_index,categories_list]}
         return gender_dict
  
-    def scrape_all_website(self):
+    def scrape_all_website(self): 
         gender = 'men'
         self.gender_dict.update(self.addItemToDictionary(gender, 2, self.options_men))
         gender = 'women'
         self.gender_dict.update(self.addItemToDictionary(gender, 1, self.options_women))
         # print(self.gender_dict)
         # return self.gender_dict
-        return True, self.gender_dict
+        return self.gender_dict
         
 
 
@@ -143,7 +167,6 @@ class User_input():
         return categories_choice
             
 
-# instance_choices = User_input()
-# instance_choices.scrape_or_not()
+
 
                                      
