@@ -1,4 +1,3 @@
-#%%
 import os
 import time
 import json
@@ -66,24 +65,30 @@ class AsosScraper:
                 # print(f'{self.href}&page={self.page}')
                 self._extract_links(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section/article/a', 'href')
                 print(page)
-                time.sleep(1)
-                self.get_product_information(page)             
-                if self.config.variable1 is True:
+                time.sleep(1)          
+                self.get_product_information(page)
+                if self.config.variable1 == True:
                     if self.is_last_page():
                         break
                 else:
                     self.load_more = self.config.products_per_category // 72
-                    if page == self.load_more:
+                    if page == self.load_more  + 1:
                         break
-    
-                   
+            
     def is_last_page(self):
             value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('value')
-            max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
-            if value == max_value:
+            self.max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
+            if value == self.max_value:
                 return True
             else:
                 return False
+    def get_number_of_products(self):
+        if self.config.variable1 == True:
+            n = self.max_value
+            return n
+        else:
+            n = self.config.products_per_category
+            return n
 
     def _get_gender_hrefs(self):
         for key,value in self.config.gender_dict.items():
@@ -170,10 +175,10 @@ class AsosScraper:
             self.product_dict_list = a dictionary that is updated with every product's dictionary with details
         """
         
-        n = int(self.config.products_per_category) 
         self.all_products_dictionary = {}
         self.sub_category_name = self.driver.find_element_by_xpath(
             '//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
+        n = self.get_number_of_products()
         for nr, url in tqdm(itertools.islice(enumerate(self.links,1),n)): 
         # for nr, url in tqdm(enumerate(self.links,1)): 
             self.product_number = ((page-1)*72) + nr 
@@ -220,7 +225,7 @@ class AsosScraper:
         return self.product_information_dict
 
     #get src and download
-    def _get_src_and_download_image(self, image_path, image_name):
+    def _get_src_and_download_image(self, image_path, image_category, image_name):
         """
         Method to get the src for every product image and download the image to a given location
 
@@ -232,36 +237,36 @@ class AsosScraper:
         """
         self._extract_links('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img','src')
         for i,src in enumerate(self.links[:-1],1):
-            self.image_path_and_name = image_path + image_name + f'.{i}.jpg'
+            self.image_path_and_name = image_path + '/' + image_name + f'.{i}.jpg'
             urllib.request.urlretrieve(src, self.image_path_and_name)
-            if 's3_bucket' in self.config.location:
+            if 's3_bucket' in self.config.location:  #if self.config.user_config['local'] == True
                 self.set_s3_connection()
-                self.s3_client.upload_file(self.image_path_and_name, 'asosscraperbucket', f'images/{image_name}.{i}.jpg')
-                
+                self.s3_client.upload_file(self.image_path_and_name, 'asosscraperbucket', f'images/{image_category}/{image_name}.{i}.jpg')
         
     #save images to location
     # version 1
     def save_image_to_location1(self, sub_category_name):
-        image_path = 'images/'+ sub_category_name 
-        image_name = f'/{sub_category_name}-product{self.product_number}'
+        image_category = sub_category_name
+        image_name = f'{sub_category_name}-product{self.product_number}'
         def save_image_locally():
-                if not os.path.exists(image_path):
-                    os.makedirs(image_path)                
-                self._get_src_and_download_image(image_path, image_name)
+            image_path = f'images/{image_category}'
+            if not os.path.exists(image_path):
+                os.makedirs(image_path)                
+            self._get_src_and_download_image(image_path,image_category,image_name)
         
         def save_image_to_s3bucket():
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    self._get_src_and_download_image(temp_dir, image_name)
+                    self._get_src_and_download_image(temp_dir, image_category, image_name)
             
                 if os.path.exists(temp_dir):
                     shutil.rmtree(temp_dir)
         
-        if 'local_machine' in self.config.location:
+        if 'local_machine' in self.config.location: #if self.config.user_config['local'] == True
             save_image_locally()
         else:
             pass
         
-        if 's3_bucket' in self.config.location:
+        if 's3_bucket' in self.config.location:  #if self.config.user_config['s3_bucket'] == True
             save_image_to_s3bucket()
         else:
             pass
@@ -298,42 +303,42 @@ class AsosScraper:
     #***************
 
 
-    def _save_to_json(self, file_to_convert, file_name):
-        with open(file_name, mode='a+', encoding='utf-8-sig') as f:
+    def _save_to_json(self, file_to_convert, file_path, file_name):
+        with open(f'{file_path}/{file_name}', mode='a+', encoding='utf-8-sig') as f:
             json.dump(file_to_convert, f, indent=4, ensure_ascii=False) 
             f.write('\n')  
-            if self.config.location == 's3_bucket':
-                f.flush()
-                time.sleep(3)
-            else:
-                pass
+        if 's3_bucket' in self.config.location: #if self.config.user_config['s3_bucket'] == True
+            f.flush()
+            time.sleep(3)
+            self.s3_client.upload_file(f'{file_path}/{file_name}','asosscraperbucket', f'json_files/{file_name}')
+        else:
+            pass
 
     # save_json_to_location
     # version 1
     def save_json_to_location1(self, all_products_dictionary, sub_category_name):
         file_to_convert = all_products_dictionary
-        file_name = f'json-files/{sub_category_name}-details.json'
+        file_name = f'{sub_category_name}-details.json'
     
         def save_json_locally():
-            if not os.path.exists('json-files'):
-                os.makedirs('json-files')
-            self._save_to_json(file_to_convert,file_name)
+            file_path = 'json-files'
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            self._save_to_json(file_to_convert, file_path, file_name)
 
         def save_json_to_s3bucket():
             self.set_s3_connection()
             with tempfile.TemporaryDirectory() as temp_dir:
-                temp_file_name = f'{temp_dir}/{file_name}'
-                self._save_to_json(file_to_convert ,file_name)
-                self.s3_client.upload_file(temp_file_name,'asosscraperbucket',file_name)
+                self._save_to_json(file_to_convert, temp_dir, file_name)
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
         
-        if 'local_machine' in self.config.location:
+        if 'local_machine' in self.config.location: #if self.config.user_config['local'] == True
             save_json_locally()
         else:
             pass
         
-        if 's3_bucket' in self.config.location:
+        if 's3_bucket' in self.config.location: #if self.config.user_config['s3_bucket'] == True
             save_json_to_s3bucket
         else:
             pass
