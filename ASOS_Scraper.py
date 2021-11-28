@@ -34,12 +34,10 @@ class AsosScraper:
         self.driver.get(self.root)
         self.a = ActionChains(self.driver) # object of ActionChains; it ads hover over functionality
         self.links = []  # Initialize links, so if the user calls for extract_links inside other methods, it doesn't throw an error
-        self.all_categories_hrefs = []
         self.config = UserInput()
-       
         
-    def href_iterate(self):
-        print(self.config.configuration)
+        
+    def href_iterate(self): #def go_tp_href
         self._get_gender_hrefs()
         for href in self.all_categories_hrefs:
             for page in itertools.count(1,1): #def iterate()
@@ -49,16 +47,16 @@ class AsosScraper:
                 print(page)
                 time.sleep(1)          
                 self.get_product_information(page)
-                if self.config.user_config.get('products_per_category') is 'all':
+                if self.config.user_config['products_per_category'] is 'all':
                     if self.is_last_page():
                         break
                 else:
-                    self.load_more = int(self.config.user_config.get('products_per_category')) // 72
-                    if page == self.load_more:
+                    self.load_more = int(self.config['products_per_category']) // 72
+                    if page == self.load_more + 1:
                         break
 
     def all(self):
-        if self.config.get('products_per_category') == 'all':
+        if self.config['products_per_category'] == 'all':
             max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
             return max_value
             
@@ -70,18 +68,20 @@ class AsosScraper:
             else:
                 return False
     def get_number_of_products(self):
-        if self.config.variable1 == True:
+        if self.config.user_config['products_per_category'] == True:
             n = self.max_value
             return n
         else:
-            n = self.config.products_per_category
+            n = int(self.config.user_config['products_per_category'])
             return n
 
     def _get_gender_hrefs(self):
-        for key,value in self.config.gender_dict.items():
-            self.driver.get(self.root + f'{key}')
-            self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', value[1])
-            self.all_categories_hrefs.extend(self.gender_hrefs)
+        self.all_categories_hrefs = []
+        for key,value in {'men':[2, 'options_men'], 'women':[1,'options_women']}:
+           if self.config.user_config[key] == True:
+               self.driver.get(self.root + key)
+               self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', {value[1]})
+               self.all_categories_hrefs.extend(self.gender_hrefs)
         return self.all_categories_hrefs
     
     def _extract_links(self, xpath: str, attribute = 'href' or 'src'):
