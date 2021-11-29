@@ -24,7 +24,6 @@ class AsosScraper:
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'    
                 } 
 
-    accept_cookies = "//button[@data-testid ='close-button']"
     with open("config.yaml", 'r') as f:
         config = yaml.safe_load(f)
      
@@ -53,6 +52,20 @@ class AsosScraper:
         # if self.config['s3_bucket'] == True:
         #     self.set_s3_connection()
         #     self.temp_dir = tempfile.TemporaryDirectory()
+
+    def accept_cookies(self): 
+        """ 
+        Method using selenium to click on accept_cookies webelement/button.
+
+        Returns: 
+            True (bool): if the click() method is successfully performed
+        """
+        try:
+            self.driver.find_element_by_xpath("//button[@data-testid ='close-button']").click()
+            return True
+        except: 
+            pass
+
     def _get_all_subcategory_hrefs(self):
         """
         Method to iterate through configured gender(s) and categories to get subcategory hrefs.
@@ -62,23 +75,25 @@ class AsosScraper:
             self._all_subcategory_hrefs: initialize list to store subcategory hrefs
 
         Return:
-            self._all_subcategory_hrefs: list containing all subcategory hrefs
+            self._all_subcategory_hrefs (list): list containing all subcategory hrefs for the choosen gender(s)
         """
         self._all_subcategory_hrefs = []
         for key,value in {'men':[2, self.options_men], 'women':[1, self.options_women]}.items():
             if self.config[key] == True:
                 self.driver.get(self.root + key)
                 self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', value[1])
-                self._all_subcategory_hrefs.extend(self.gender_hrefs)
+                self._all_subcategory_hrefs.extend(self.subcategory_hrefs)
         return self._all_subcategory_hrefs
-        
-    def href_iterate(self):
+
+    def scrape_and_save(self):
         """
         Method to run scraping functionality.
-        Iterates through all subcategory hrefs; for every href iterates through required number of pages as 
-   
-        Variable:
-            
+        Iterates through all subcategory hrefs; for every href iterates through required number of pages and scrapes data.
+        Calls _get_all_subcategory_hrefs() to get list containing all subcategory hrefs.
+        Calls _extract_links() to get each product's href and collect them inside a list. 
+        Calls get_product_information() to get details and images from every product.
+        Calls save_json_to_location() to store each product details inside a json file that would be stored to configured location. 
+
         """
         self._get_all_subcategory_hrefs()
         for href in self._all_subcategory_hrefs:
@@ -89,67 +104,65 @@ class AsosScraper:
                 self._extract_links(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section/article/a', 'href')
                 print(page)
                 time.sleep(1)          
-                self.get_product_information(page)
+                self._get_product_information(page)
                 if self.config['products_per_category'] == 'all':
-                    if self.is_last_page():
+                    if self._is_last_page():
                         break
                 else:
                     self.load_more = int(self.config['products_per_category']) // 72
                     if page == self.load_more + 1:
                         break
-            self.save_json_to_location(self.all_products_dictionary, self.sub_category_name)
+            self._save_json(self.all_products_dictionary, self.sub_category_name)
        
-    def is_last_page(self):
-            value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('value')
-            self.max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
-            if value == self.max_value:
-                return True
-            else:
-                return False
-    def get_number_of_products(self):
-        if self.config['products_per_category'] == 'all':
-            n = self.max_value
-            return n 
+    def _is_last_page(self):
+        """
+        Method to get the maximum number of products from subcategory. 
+        
+        Returns:
+            True (bool): If the number of products viewed is equal to the maximum number of products. 
+            False (bool): If the number of products viewed is not equal to the maximum number of products. 
+        """
+        value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('value')
+        max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
+        if value == max_value:
+            return True
         else:
-            n = int(self.config['products_per_category'])
-            return n
+            return False
 
-
-
-    
     def _extract_links(self, xpath: str, attribute = 'href' or 'src'):
+        """
+        Method to extract either the href or src attributes from webelements. 
+
+        Parameters:
+            xpath (str): xpath of webelement containing one of the attributes: 'href' or 'src'
+            attribute (str): webelement attribute that can be either 'href' or 'src' 
+
+        Returns:
+            self.links (list): list stores the extracted 'href's or 'src's
+        """
         xpaths_list = self.driver.find_elements_by_xpath(xpath)
         self.links = []
         for item in xpaths_list:
             self.links.append(item.get_attribute(attribute))
-        #  print(len(self.links))
         return self.links
-        #  print(self.links)
-     
-    def click_buttons(self, button_xpath): 
-            try:
-                self.driver.find_element_by_xpath(button_xpath).click()
-                return True
-            except: 
-               pass
-    
+         
     def _scrape_category(self, xpath:str, category_list: list ):
         """
         Method to return href's of webpages to be scraped, according to the user's choices.
-        For every main gender category, the method extracts extracts the 'View all' or 'New in' subcategory hrefs.
+        For every main gender category, the method extracts the 'View all' or 'New in' subcategory hrefs.
         
         Parameters: 
-            xpath: requires a string type input for either the 'Men' or 'Women' sections
-            category_list: requires a list type input containing the categories choosen by the user
+            xpath (str): requires a string type input for either the 'Men' and/or 'Women' sections.
+            category_list (list): requires a list type input containing the category opetions determined in the config.yaml.
             
-            These parameters are determined within the '_get_all_subcategory_hrefs' method.
         Return:
-            List with the subcategories hrefs.
+            self.subcategory_hrefs (list): list containing subcategory_hrefs for given gender.
+            This would be appended to self.all_subcategory_hrefs inside _get_all_subcategory_hrefs method.
         """
         
-        self.gender_hrefs = [] #href links to be scraped
+        self.subcategory_hrefs = [] #href links to be scraped
         self.category_list = category_list
-        category_list_to_dict = [] #see below, this list will contain the category name, the number of the category button and the corresponding webelement (button) 
+        category_list_to_dict = [] #this list will contain the category name, the index number of the category button and the corresponding webelement (button) 
         main_category_elements = self.driver.find_elements_by_xpath(xpath)
        
         for element in main_category_elements:
@@ -158,7 +171,6 @@ class AsosScraper:
                 category_list_to_dict.append(main_category_heading) 
                 category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
                 category_list_to_dict.append(element) 
-        
         
         category_dict = {category_list_to_dict[i]:[category_list_to_dict[i + 1],category_list_to_dict[i + 2]] for i in range(0, len(category_list_to_dict), 3)}  
         subcategory_elements_list = [] 
@@ -169,18 +181,23 @@ class AsosScraper:
             subcategory_elements_list.append(self.driver.find_elements_by_xpath(f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a'))          
             for element in subcategory_elements_list[i]:  
                 if element.text == 'View all':
-                    self.gender_hrefs.append(element.get_attribute('href'))
+                    self.subcategory_hrefs.append(element.get_attribute('href'))
                     break
                 elif element.text == 'New in': 
                     temp = element        
             else:
-                self.gender_hrefs.append(temp.get_attribute('href'))     
-        # print(self.gender_hrefs)   
-        return self.gender_hrefs
+                self.subcategory_hrefs.append(temp.get_attribute('href'))     
+        return self.subcategory_hrefs
  
-     # this method will extract the products' hrefs products from (page_number = 4) pages
-
-    def get_number_of_products(self):
+    def _get_number_of_products(self):
+        """
+        Method to set how many products (n) will be scraped. 
+        If the value of the configured number of products is 'all', all the products will be scraped.
+        If the value of the configured number of products is an integer, the number of products to be scraped is determined by the integer.
+            
+        Returns:
+            n (int): number of products to be scraped.
+        """
         if self.config['products_per_category'] == 'all':
             n = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
             return n
@@ -188,39 +205,41 @@ class AsosScraper:
             n = int(self.config['products_per_category'])
             return n
     
-
-    def get_product_information (self, page: int): #rename get_product
+    def _get_product_information (self, page: int): 
         """
         Method to go to every product on page and get product information: images & product details.
-        # This method calls three other instance methods: _get_details, _download_images, _save_to_json.
+        This method calls two other instance methods: _get_details() and save_image_to_location()
+
         Parameters: 
-            page: the page number of the website subcategory 
-            This parameter is determined within the 'href_iterate' method.
-        Variable:
-            self.product_dict_list = a dictionary that is updated with every product's dictionary with details
+            page (int): the page number of the website subcategory 
+            This parameter is determined within the 'scrape_and_save' method.
+
+        Returns: 
+            self.all_products_dictionary (dict): a dictionary containing individual product details dictionaries (product_information_dict).
         """
-        n = self.get_number_of_products()
+        n = self._get_number_of_products()
         for nr, url in tqdm(itertools.islice(enumerate(self.links,1),n)): 
-        # for nr, url in tqdm(enumerate(self.links,1)): 
             self.product_number = ((page-1)*72) + nr 
             self.driver.get(url)                               
-            self._get_details() #get_product_details
-            self.save_image_to_location(self.sub_category_name)
+            self._get_details() 
+            self._save_image(self.sub_category_name)
             self.all_products_dictionary.update(self.product_information_dict)
             if self.product_number == n:
                 break
         return self.all_products_dictionary
-        # self.save_json_to_location(self.all_products_dictionary, self.sub_category_name)
-         
+        
     def _get_details(self):
         """
-        Method to extract the product details into a dictionary.
+        Method to get product information and details and store them into a dictionary.
+
         Variables:
             unique_product_name: unique product identifier determined by the gender, subcategory name and order on the webpage
-            product_information_dict: dictionary template to which the product details are extracted
+            product_information_dict: dictionary template to which the product details are extracted. 
             xpath_dict: xpath lookup to access the details to be scraped on each product page 
+
         Return: 
-            dictionary with product details
+            self.product_information_dict (dict): dictionary storing product information and details
+                Every product_information_dict is added to the all_products_dictionary inside get_product_information method
         """
         unique_product_name = f'{self.sub_category_name}-product-{self.product_number}'
         self.product_information_dict = {unique_product_name: 
@@ -246,19 +265,13 @@ class AsosScraper:
         
         return self.product_information_dict
 
-    #get src and download
-    def _get_src_and_download_image(self, image_path, image_category, image_name):
+    def _save_image(self, sub_category_name: str):
         """
-        Method to get the src for every product image and download the image to a given location
-        Parameteres: 
-            filename: location where the images are downloaded to 
-        
-        Variables: 
-            scr_list: list into which the obtained src is stored
+        Method to download every product image (jpg format) to local and/or s3_bucket locations.
+    
+        Parameters: 
+            sub_category_name (str): parameter determined within the get_product_information method.
         """
-       
-    #save images to location
-    def save_image_to_location(self, sub_category_name):
         image_category = sub_category_name
         image_name = f'{sub_category_name}-product{self.product_number}'
         src_list = self._extract_links('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img','src')
@@ -279,7 +292,14 @@ class AsosScraper:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
             
-    def save_json_to_location(self, all_products_dictionary, sub_category_name):
+    def _save_json(self, all_products_dictionary, sub_category_name):
+        """
+        Method to convert the all_products_dictionary object into a json format and download it into local and/or s3_bucket locations.
+
+        Parameters: 
+            sub_category_name (str): parameter determined within the get_product_information method. 
+            all_products_dictionary (dict): dictionary to be converted into json file; this parameter is determined within the get_product_information_ method.
+        """
         file_to_convert = all_products_dictionary
         file_name = f'{sub_category_name}-details.json'
 
@@ -304,17 +324,21 @@ class AsosScraper:
                 shutil.rmtree(temp_dir)
 
     def set_s3_connection(self):
+        """
+        Method to create service client connection to the S3 AWS services.
+
+        Returns:
+            self.s3_client: variable name for the s3 client connection 
+        """
         self.s3_client = boto3.client('s3')
+        return self.s3_client
           
 if __name__ == '__main__':
-    # instance_choices = User_input()
-    # instance_choices.scrape_or_not()
     product_search = AsosScraper()
-    # product_search.read_from_config_file() 
-    product_search.click_buttons(product_search.accept_cookies) #this xpath is for accepting the cookies                           
-    product_search.href_iterate()
+    product_search.accept_cookies()                     
+    product_search.scrape_and_save()
     product_search.driver.quit()
-    # product_search.print_statements()
+
 
 
     
