@@ -1,9 +1,13 @@
-# DRIVER: Chrome
-DRIVER: Remote
+DRIVER: Chrome
+# DRIVER: Remote
 MEN: True 
 WOMEN: True
 LOCAL: False
 S3_BUCKET: True
+BUCKET_NAME: asosscraperbucket2
+PRODUCTS_PER_CATEGORY: 1 #'all'
+SAVE_IMAGES: True
+SAVE_JSON: True 
 OPTIONS_MEN:
         #  - New in
         # - Clothing
@@ -20,7 +24,9 @@ OPTIONS_WOMEN:
         #  - Topshop
         # - Sportswear
         - Face + Body
-PRODUCTS_PER_CATEGORY: 100 #'all' 
+PRODUCTS_PER_CATEGORY: 1 #'all' 
+
+
 
 
     

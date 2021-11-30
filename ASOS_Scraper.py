@@ -7,6 +7,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.common.by import By
 from tqdm import tqdm
 import boto3
 import tempfile
@@ -38,36 +39,20 @@ class AsosScraper:
             self.options_women: list object from config dictionary containing women's subcategories to be scraped
             self.links: list variable to be used each time extract_links is called
         """
+
         self.root = "https://www.asos.com/"
         if self.config['DRIVER'] == 'Chrome':
-            # options = webdriver.ChromeOptions()
-            # options.add_argument('--no-sandbox')
-            # options.add_argument('--disable-dev-shm-usage')
-            # options.add_argument('--headless')
-            # options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1;WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
-            # #options.add_argument('--user-agent="Chrome"')
-            # # options.add_argument('--make-default-browser')
-            # options.add_argument('--start-maximized')
-            # options.add_argument('--remote-debugging-port=9222')
-            # self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-
             self.driver = webdriver.Chrome()
-            # print('good')
+
         else:
             self.driver = webdriver.Remote("http://localhost:4444/wd/hub", DesiredCapabilities.CHROME)
-            print('not good')
         self.driver.get(self.root)
         self.accept_cookies()
-        # print(self.driver.get_screenshot_as_file('ss.png'))
         self.options_men = self.config['OPTIONS_MEN']
         self.options_women = self.config['OPTIONS_WOMEN']
+        self.bucket_name = self.config['BUCKET_NAME']
         self.links = []  
-        print(self.driver.get_screenshot_as_file('ss.png'))
-    
-        # if self.config['s3_bucket'] == True:
-        #     self.set_s3_connection()
-        #     self.temp_dir = tempfile.TemporaryDirectory()
-
+        
     def accept_cookies(self): 
         """ 
         Method using selenium to click on accept_cookies webelement/button.
@@ -76,12 +61,11 @@ class AsosScraper:
             True (bool): if the click() method is successfully performed
         """
         try:
-            self.driver.find_element_by_xpath("//button[@data-testid ='close-button']").click()
+            self.driver.find_element(By.XPATH,"//button[@data-testid ='close-button']").click()
             return True
         except: 
             pass
 # //*[@id="product-details-container"]/div[3]/div/a[1]
-
 
     def _get_all_subcategory_hrefs(self):
         """
@@ -95,7 +79,7 @@ class AsosScraper:
             self._all_subcategory_hrefs (list): list containing all subcategory hrefs for the choosen gender(s)
         """
         self._all_subcategory_hrefs = []
-        for key,value in {'men':[2, self.options_men], 'women':[1, self.options_women]}.items():
+        for key,value in {'MEN':[2, self.options_men], 'WOMEN':[1, self.options_women]}.items():
             if self.config[key] == True:
                 self.driver.get(self.root + key)
                 self._scrape_category(f'//*[@id="chrome-sticky-header"]/div[2]/div[{value[0]}]/nav/div/div/button[*]', value[1])
@@ -117,7 +101,7 @@ class AsosScraper:
             self.all_products_dictionary = {}
             for page in itertools.count(1,1): #def iterate()
                 self.driver.get(f'{href}&page={page}')
-                self.sub_category_name = self.driver.find_element_by_xpath('//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
+                self.sub_category_name = self.driver.find_element(By.XPATH,'//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
                 self._extract_links(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section/article/a', 'href')
                 print(page)
                 time.sleep(1)          
@@ -129,7 +113,8 @@ class AsosScraper:
                     self.load_more = int(self.config['PRODUCTS_PER_CATEGORY']) // 72
                     if page == self.load_more + 1:
                         break
-            self._save_json(self.all_products_dictionary, self.sub_category_name)
+            if  self.config['SAVE_JSON'] == True:
+                self._save_json(self.all_products_dictionary, self.sub_category_name)
        
     def _is_last_page(self):
         """
@@ -139,8 +124,8 @@ class AsosScraper:
             True (bool): If the number of products viewed is equal to the maximum number of products. 
             False (bool): If the number of products viewed is not equal to the maximum number of products. 
         """
-        value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('value')
-        max_value = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
+        value = self.driver.find_element(By.XPATH,'//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('value')
+        max_value = self.driver.find_element(By.XPATH,'//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
         if value == max_value:
             return True
         else:
@@ -157,7 +142,7 @@ class AsosScraper:
         Returns:
             self.links (list): list stores the extracted 'href's or 'src's
         """
-        xpaths_list = self.driver.find_elements_by_xpath(xpath)
+        xpaths_list = self.driver.find_elements(By.XPATH,(xpath))
         self.links = []
         for item in xpaths_list:
             self.links.append(item.get_attribute(attribute))
@@ -180,7 +165,7 @@ class AsosScraper:
         self.subcategory_hrefs = [] #href links to be scraped
         self.category_list = category_list
         category_list_to_dict = [] #this list will contain the category name, the index number of the category button and the corresponding webelement (button) 
-        main_category_elements = self.driver.find_elements_by_xpath(xpath)
+        main_category_elements = self.driver.find_elements(By.XPATH,(xpath))
        
         for element in main_category_elements:
             main_category_heading = element.find_element_by_css_selector('span span').text
@@ -195,7 +180,7 @@ class AsosScraper:
             elements[1].click()  
             time.sleep(3)
 
-            subcategory_elements_list.append(self.driver.find_elements_by_xpath(f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a'))          
+            subcategory_elements_list.append(self.driver.find_elements(By.XPATH, f'//div[{elements[0]}]/div/div[2]/ul/li[1]/ul/li/a'))          
             for element in subcategory_elements_list[i]:  
                 if element.text == 'View all':
                     self.subcategory_hrefs.append(element.get_attribute('href'))
@@ -216,7 +201,7 @@ class AsosScraper:
             n (int): number of products to be scraped.
         """
         if self.config['PRODUCTS_PER_CATEGORY'] == 'all':
-            n = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
+            n = self.driver.find_element(By.XPATH, '//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
             return n
         else:
             n = int(self.config['PRODUCTS_PER_CATEGORY'])
@@ -238,8 +223,9 @@ class AsosScraper:
         for nr, url in tqdm(itertools.islice(enumerate(self.links,1),n)): 
             self.product_number = ((page-1)*72) + nr 
             self.driver.get(url)                               
-            self._get_details() 
-            self._save_image(self.sub_category_name)
+            self._get_details()
+            if self.config['SAVE_IMAGES'] == True: 
+                self._save_image(self.sub_category_name)
             self.all_products_dictionary.update(self.product_information_dict)
             if self.product_number == n:
                 break
@@ -268,13 +254,13 @@ class AsosScraper:
                                                }
                                              } 
         for key in self.xpath_dict:
-            try: #find details info
+            try: 
                 if key == 'Product Details':
-                    details_container = self.driver.find_elements_by_xpath(self.xpath_dict[key])
+                    details_container = self.driver.find_elements(By.XPATH, (self.xpath_dict[key]))
                     for detail in details_container:
                         self.product_information_dict[unique_product_name][key].append(detail.text)
                 else:
-                    dict_key = self.driver.find_element_by_xpath(self.xpath_dict[key])
+                    dict_key = self.driver.find_element(By.XPATH,(self.xpath_dict[key]))
                     self.product_information_dict[unique_product_name][key].append(dict_key.text)
                      
             except:
@@ -305,7 +291,7 @@ class AsosScraper:
             with tempfile.TemporaryDirectory() as temp_dir:
                 for i,src in enumerate(src_list[:-1],1):   
                     urllib.request.urlretrieve(src, f'{temp_dir}/{image_name}.{i}.jpg')
-                    self.s3_client.upload_file(f'{temp_dir}/{image_name}.{i}.jpg', 'asosscraperbucket2', f'images/{image_category}/{image_name}.{i}.jpg')
+                    self.s3_client.upload_file(f'{temp_dir}/{image_name}.{i}.jpg', self.bucket_name, f'images/{image_category}/{image_name}.{i}.jpg')
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
             
@@ -336,7 +322,7 @@ class AsosScraper:
                     f.write('\n') 
                     f.flush()
                     time.sleep(3)
-                    self.s3_client.upload_file(f'{temp_dir}/{file_name}','asosscraperbucket2', f'json_files/{file_name}')
+                    self.s3_client.upload_file(f'{temp_dir}/{file_name}', self.bucket_name, f'json_files/{file_name}')
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
 
@@ -355,10 +341,3 @@ if __name__ == '__main__':
     product_search.accept_cookies()                     
     product_search.scrape_and_save()
     product_search.driver.quit()
-
- 
-
-    
-
-
-
