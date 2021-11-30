@@ -328,6 +328,7 @@ class AsosScraper:
                 f.write('\n') 
         
         if self.config['S3_BUCKET'] == True:
+            bucket_name = self.config['BUCKET_NAME']
             self.set_s3_connection()
             # temp_dir = tempfile.TemporaryDirectory()
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -336,7 +337,7 @@ class AsosScraper:
                     f.write('\n') 
                     f.flush()
                     time.sleep(3)
-                    self.s3_client.upload_file(f'{temp_dir}/{file_name}','asosscraperbucket2', f'json_files/{file_name}')
+                    self.s3_client.upload_file(f'{temp_dir}/{file_name}', bucket_name, f'json_files/{file_name}')
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
 

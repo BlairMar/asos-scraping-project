@@ -21,6 +21,6 @@ OPTIONS_WOMEN:
         # - Sportswear
         - Face + Body
 PRODUCTS_PER_CATEGORY: 100 #'all' 
-
+BUCKET_NAME: 'asosscraperbucket2' #user input goes here
 
     
