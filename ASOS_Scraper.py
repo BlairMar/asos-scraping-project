@@ -7,7 +7,6 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.remote.webdriver import WebDriver
 from tqdm import tqdm
 import boto3
 import tempfile
@@ -40,14 +39,30 @@ class AsosScraper:
             self.links: list variable to be used each time extract_links is called
         """
         self.root = "https://www.asos.com/"
-        if self.config['driver'] == 'Chrome':
+        if self.config['DRIVER'] == 'Chrome':
+            # options = webdriver.ChromeOptions()
+            # options.add_argument('--no-sandbox')
+            # options.add_argument('--disable-dev-shm-usage')
+            # options.add_argument('--headless')
+            # options.add_argument('--user-agent="Mozilla/5.0 (Windows NT 6.1;WOW64; rv:50.0) Gecko/20100101 Firefox/50.0"')
+            # #options.add_argument('--user-agent="Chrome"')
+            # # options.add_argument('--make-default-browser')
+            # options.add_argument('--start-maximized')
+            # options.add_argument('--remote-debugging-port=9222')
+            # self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+
             self.driver = webdriver.Chrome()
+            # print('good')
         else:
             self.driver = webdriver.Remote("http://localhost:4444/wd/hub", DesiredCapabilities.CHROME)
+            print('not good')
         self.driver.get(self.root)
-        self.options_men = self.config['options_men']
-        self.options_women = self.config['options_women']
+        self.accept_cookies()
+        # print(self.driver.get_screenshot_as_file('ss.png'))
+        self.options_men = self.config['OPTIONS_MEN']
+        self.options_women = self.config['OPTIONS_WOMEN']
         self.links = []  
+        print(self.driver.get_screenshot_as_file('ss.png'))
     
         # if self.config['s3_bucket'] == True:
         #     self.set_s3_connection()
@@ -65,6 +80,8 @@ class AsosScraper:
             return True
         except: 
             pass
+# //*[@id="product-details-container"]/div[3]/div/a[1]
+
 
     def _get_all_subcategory_hrefs(self):
         """
@@ -105,11 +122,11 @@ class AsosScraper:
                 print(page)
                 time.sleep(1)          
                 self._get_product_information(page)
-                if self.config['products_per_category'] == 'all':
+                if self.config['PRODUCTS_PER_CATEGORY'] == 'all':
                     if self._is_last_page():
                         break
                 else:
-                    self.load_more = int(self.config['products_per_category']) // 72
+                    self.load_more = int(self.config['PRODUCTS_PER_CATEGORY']) // 72
                     if page == self.load_more + 1:
                         break
             self._save_json(self.all_products_dictionary, self.sub_category_name)
@@ -198,11 +215,11 @@ class AsosScraper:
         Returns:
             n (int): number of products to be scraped.
         """
-        if self.config['products_per_category'] == 'all':
+        if self.config['PRODUCTS_PER_CATEGORY'] == 'all':
             n = self.driver.find_element_by_xpath('//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
             return n
         else:
-            n = int(self.config['products_per_category'])
+            n = int(self.config['PRODUCTS_PER_CATEGORY'])
             return n
     
     def _get_product_information (self, page: int): 
@@ -276,14 +293,14 @@ class AsosScraper:
         image_name = f'{sub_category_name}-product{self.product_number}'
         src_list = self._extract_links('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img','src')
         
-        if self.config['local'] == True:
+        if self.config['LOCAL'] == True:
             image_path = f'images/{image_category}'
             if not os.path.exists(image_path):
                 os.makedirs(image_path)         
             for i,src in enumerate(src_list[:-1],1):   
                 urllib.request.urlretrieve(src, f'{image_path}/{image_name}.{i}.jpg')   
            
-        if self.config['s3_bucket'] == True:
+        if self.config['S3_BUCKET'] == True:
             self.set_s3_connection()
             with tempfile.TemporaryDirectory() as temp_dir:
                 for i,src in enumerate(src_list[:-1],1):   
@@ -303,14 +320,14 @@ class AsosScraper:
         file_to_convert = all_products_dictionary
         file_name = f'{sub_category_name}-details.json'
 
-        if self.config['local'] == True:
+        if self.config['LOCAL'] == True:
             if not os.path.exists('json-files'):
                 os.makedirs('json-files')
             with open(f'json-files/{file_name}', mode='a+', encoding='utf-8-sig') as f:
                 json.dump(file_to_convert, f, indent=4, ensure_ascii=False) 
                 f.write('\n') 
         
-        if self.config['s3_bucket'] == True:
+        if self.config['S3_BUCKET'] == True:
             self.set_s3_connection()
             # temp_dir = tempfile.TemporaryDirectory()
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -339,7 +356,7 @@ if __name__ == '__main__':
     product_search.scrape_and_save()
     product_search.driver.quit()
 
-
+ 
 
     
 

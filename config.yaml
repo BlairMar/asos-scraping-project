@@ -1,26 +1,26 @@
-# driver: Chrome
-driver: Remote
-men: True  
-women: True
-local: True
-s3_bucket: True
-options_men:
-        # - New in
+# DRIVER: Chrome
+DRIVER: Remote
+MEN: True 
+WOMEN: True
+LOCAL: False
+S3_BUCKET: True
+OPTIONS_MEN:
+        #  - New in
         # - Clothing
         # - Shoes
         # - Accessories
         # - Topman
         # - Sportswear
         - Face + Body
-options_women:
+OPTIONS_WOMEN:
         # - New in
         # - Clothing
         # - Shoes
         # - Accessories
-        # - Topshop
+        #  - Topshop
         # - Sportswear
         - Face + Body
-products_per_category: 3 #'all' 
+PRODUCTS_PER_CATEGORY: 100 #'all' 
 
 
     
