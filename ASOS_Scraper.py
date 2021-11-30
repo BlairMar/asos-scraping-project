@@ -314,6 +314,7 @@ class AsosScraper:
                 f.write('\n') 
         
         if self.config['S3_BUCKET'] == True:
+            bucket_name = self.config['BUCKET_NAME']
             self.set_s3_connection()
             # temp_dir = tempfile.TemporaryDirectory()
             with tempfile.TemporaryDirectory() as temp_dir:
