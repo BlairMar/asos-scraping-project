@@ -30,10 +30,14 @@ MEN |**True** *or* **False** |If you want to scrape from the Men's categories
 WOMEN |**True** *or* **False**|If you want to scrape from the Women's categories
 LOCAL |**True** *or* **False**|If you want save the data on the local machine
 S3_BUCKET |**True** *or* **False**| If you want save the data on AWS S3 Bucket cloud storage
+BUCKET_NAME |<*Enter your bucket name here*> |Visit https://s3.console.aws.amazon.com/s3/ to create a bucket if not done already
+PRODUCTS_PER_CATEGORY |**all** *or* **integer**|**all** will scrape every product from categories selected <br />**integer** will scrape required number of products from each category<br />The ASOS website displays 72 products per page<br />For **all** or if the **integer** given is greater than 72 the scraper will visit the required number of pages to get specified number of products
+SAVE_IMAGES |**True** *or* **False** |If you want to scrape images from the website
+SAVE_JSON |**True** *or* **False** |If you want to scrape alphanumeric data from the website
 OPTIONS_MEN |**New in<br />Clothing<br />Shoes<br />Accessories<br />Topman<br />Sportswear<br />Face + Body**|Requires a list of categories, delete or comment out lines to select the options
 OPTIONS_WOMEN |**New in<br />Clothing<br />Shoes<br />Accessories<br />Topshop<br />Sportswear<br />Face + Body**|Requires a list of categories, delete or comment out lines to select the options
-PRODUCTS_PER_CATEGORY |**all** *or* **integer**|**all** will scrape every product from categories selected <br />**integer** will scrape required number of products from each category<br />The ASOS website displays 72 products per page<br />For **all** or if the **integer** given is greater than 72 the scraper will visit the required number of pages to get specified number of products
-BUCKET_NAME |<*Enter your bucket name here*> |Visit https://s3.console.aws.amazon.com/s3/ to create a bucket if not done already
+
+
 
 ### config.yaml
 ```
@@ -42,6 +46,10 @@ MEN: True
 WOMEN: True
 LOCAL: True
 S3_BUCKET: True
+BUCKET_NAME: <Enter your bucket name here>
+PRODUCTS_PER_CATEGORY: integer or all
+SAVE_IMAGES: True
+SAVE_JSON: True 
 OPTIONS_MEN:
         - New in
         - Clothing
@@ -58,8 +66,6 @@ OPTIONS_WOMEN:
         - Topshop
         - Sportswear
         - Face + Body
-PRODUCTS_PER_CATEGORY: integer or all
-BUCKET_NAME: <Enter your bucket name here>
 ```
  <br /> 
 

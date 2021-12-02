@@ -13,7 +13,8 @@ import boto3
 import tempfile
 import shutil
 import yaml
-
+import argparse
+import arg_flags 
 
 class AsosScraper:
     xpath_dict = {
@@ -48,10 +49,72 @@ class AsosScraper:
             self.driver = webdriver.Remote("http://localhost:4444/wd/hub", DesiredCapabilities.CHROME)
         self.driver.get(self.root)
         self.accept_cookies()
+        self.links = [] 
+
+    def arg_parse_flags(self):
+        parser = argparse.ArgumentParser(description='Scraper Config')
+        parser.add_argument('--M', action=argparse.BooleanOptionalAction) #men
+        parser.add_argument('--W', action=argparse.BooleanOptionalAction) #women
+        parser.add_argument('--L', action=argparse.BooleanOptionalAction) #save locally
+        parser.add_argument('--S3', action=argparse.BooleanOptionalAction) #saves to s3 bucket
+        parser.add_argument('--SJ', action=argparse.BooleanOptionalAction) #savejson
+        parser.add_argument('--SI', action=argparse.BooleanOptionalAction) #saveimage
+        parser.add_argument("-BN", "--BUCKET_NAME", help="Name of your S3 Bucket") #bucketname
+        parser.add_argument("-NUM", "--PRODUCTS_PER_CATEGORY", help="Number of products per category", default='all')
+        parser.add_argument("-OM", "--OPTIONS_MEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topman, (6)Sportswear, (7)Face + Body", default=[0])
+        parser.add_argument("-OW", "--OPTIONS_WOMEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topshop, (6)Sportswear, (7)Face + Body", default=[0])
+        args = parser.parse_args()
+
+        
+        input_om = list(args.OPTIONS_MEN)
+        for _ in range(len(input_om)):
+            if input_om[_] == '1':
+                input_om[_] = 'New in'
+            elif input_om[_] == '2':
+                input_om[_] = 'Clothing'
+            elif input_om[_] == '3':
+                input_om[_] = 'Shoes'
+            elif input_om[_] == '4':
+                input_om[_] = 'Accessories'
+            elif input_om[_] == '5':
+                input_om[_] = 'Topman'
+            elif input_om[_] == '6':
+                input_om[_] = 'Sportswear'
+            elif input_om[_] == '7':
+                input_om[_] = 'Face + Body'
+            else:
+                pass
+        input_ow = list(args.OPTIONS_WOMEN)
+        for _ in range(len(input_ow)):
+            if input_ow[_] == '1':
+                input_ow[_] = 'New in'
+            elif input_ow[_] == '2':
+                input_ow[_] = 'Clothing'
+            elif input_ow[_] == '3':
+                input_ow[_] = 'Shoes'
+            elif input_ow[_] == '4':
+                input_ow[_] = 'Accessories'
+            elif input_ow[_] == '5':
+                input_ow[_] = 'Topshop'
+            elif input_ow[_] == '6':
+                input_ow[_] = 'Sportswear'
+            elif input_ow[_] == '7':
+                input_ow[_] = 'Face + Body'
+            else:
+                pass
+       
+         # default=False # contains category list if flag used
+      
         self.options_men = self.config['OPTIONS_MEN']
-        self.options_women = self.config['OPTIONS_WOMEN']
+        if args.OPTIONS_MEN != [0]:
+            self.options_men = input_om
+
+        self.options_women = self.config['OPTIONS_WOMEN'] 
+        if args.OPTIONS_WOMEN != [0]:
+            self.options_women = input_ow
+        
         self.bucket_name = self.config['BUCKET_NAME']
-        self.links = []  
+         
         
     def accept_cookies(self): 
         """ 
