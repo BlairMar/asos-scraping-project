@@ -8,13 +8,18 @@ from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
 from tqdm import tqdm
 import boto3
 import tempfile
 import shutil
 import yaml
 import argparse
-import arg_flags 
 
 class AsosScraper:
     xpath_dict = {
@@ -24,9 +29,6 @@ class AsosScraper:
                 'Product Code': '//*[@id="product-details-container"]/div[2]/div[1]/p',                                   
                 'Colour': '//*[@id="product-colour"]/section/div/div/span'    
                 } 
-
-    with open("config.yaml", 'r') as f:
-        config = yaml.safe_load(f)
      
     def __init__(self):
         """
@@ -36,37 +38,81 @@ class AsosScraper:
             self.root: URL root of website to be scraped
             self.driver: selenium webdriver
             self.config: dictionary object parsed from config.yaml
+            self.links: list variable to be used each time extract_links is called
+            self.args: CLI arguments 
             self.options_men: list object from config dictionary containing men's subcategories to be scraped
             self.options_women: list object from config dictionary containing women's subcategories to be scraped
-            self.links: list variable to be used each time extract_links is called
+            
         """
+        with open("config.yaml", 'r') as f:
+            self.config = yaml.safe_load(f)
 
         self.root = "https://www.asos.com/"
-        if self.config['DRIVER'] == 'Chrome':
-            self.driver = webdriver.Chrome()
-
-        else:
-            self.driver = webdriver.Remote("http://localhost:4444/wd/hub", DesiredCapabilities.CHROME)
-        self.driver.get(self.root)
         self.accept_cookies()
         self.links = [] 
-
-    def arg_parse_flags(self):
+        
+        # use argparsers to set CLI flags 
         parser = argparse.ArgumentParser(description='Scraper Config')
-        parser.add_argument('--M', action=argparse.BooleanOptionalAction) #men
-        parser.add_argument('--W', action=argparse.BooleanOptionalAction) #women
-        parser.add_argument('--L', action=argparse.BooleanOptionalAction) #save locally
-        parser.add_argument('--S3', action=argparse.BooleanOptionalAction) #saves to s3 bucket
-        parser.add_argument('--SJ', action=argparse.BooleanOptionalAction) #savejson
-        parser.add_argument('--SI', action=argparse.BooleanOptionalAction) #saveimage
-        parser.add_argument("-BN", "--BUCKET_NAME", help="Name of your S3 Bucket") #bucketname
-        parser.add_argument("-NUM", "--PRODUCTS_PER_CATEGORY", help="Number of products per category", default='all')
-        parser.add_argument("-OM", "--OPTIONS_MEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topman, (6)Sportswear, (7)Face + Body", default=[0])
-        parser.add_argument("-OW", "--OPTIONS_WOMEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topshop, (6)Sportswear, (7)Face + Body", default=[0])
-        args = parser.parse_args()
+        parser.add_argument('--CH', action=argparse.BooleanOptionalAction, default=True) # --no-CH not to run driver.Chrome()
+        parser.add_argument('--R', action=argparse.BooleanOptionalAction, default=False) # --R for driver.Remote()
+        parser.add_argument('--M', action=argparse.BooleanOptionalAction, default=False) # --M for men
+        parser.add_argument('--W', action=argparse.BooleanOptionalAction, default=False) # --W for women
+        parser.add_argument('--L', action=argparse.BooleanOptionalAction, default=True) # --no-L not to save locally 
+        parser.add_argument('--S3', action=argparse.BooleanOptionalAction, default=False) # --S3 to save to S3 bucket
+        parser.add_argument('--SJ', action=argparse.BooleanOptionalAction, default=True) # --no-SJ no to save JSON file
+        parser.add_argument('--SI', action=argparse.BooleanOptionalAction, default=False) #  --SI to save image 
+        parser.add_argument("-BN", "--BUCKET_NAME", help="Name of your S3 Bucket") #-BN <bucket name> for bucket name
+        parser.add_argument("-NUM", "--PRODUCTS_PER_CATEGORY", help="Number of products per category", default='all')  # -NUM to customize number of products
+        parser.add_argument("-OM", "--OPTIONS_MEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topman, (6)Sportswear, (7)Face + Body", default=[0]) # -OM to customize men catgegories
+        parser.add_argument("-OW", "--OPTIONS_WOMEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topshop, (6)Sportswear, (7)Face + Body", default=[0]) # -OW to customize women categories
+        self.args = parser.parse_args()
+        print(self.args)
+
+        #conditions to choose the driver
+        # if no user input, the default settings would run Chrome driver
+        if self.args.CH == True and self.args.R == False:
+            # if self.config['DRIVER'] == 'Chrome':
+            chrome_options = Options()
+            chrome_options.add_argument('--ignore-certificate-errors')
+            chrome_options.add_argument('--allow-running-insecure-content')        
+            chrome_options.add_argument('--no-sandbox')        
+            chrome_options.add_argument('--headless')        
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument("user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36'") 
+
+       	    self.driver = webdriver.Chrome(options=chrome_options)
+            
+        # if user chooses Remote, then driver = Remote
+        if self.args.CH == False and self.args.R == True: # --no-CH
+            self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
+
+        # if by mistake user chooses both Chrome and Remote, run Remote 
+        if self.args.CH == True and self.args.R == True: # --no-CH
+            print('Your choice is both Chrome and Remote. The driver will run remotely')
+            self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
 
         
-        input_om = list(args.OPTIONS_MEN)
+        self.driver.get(self.root)
+
+        # conditions to set the gender
+        # by default, both self.config['WOMEN'] & self.config['MEN'] are True, so the scraper would scrape both genders
+        # the user can customize the gender and this would override the default configuration
+        if self.args.M == True and self.args.W == False:
+            self.config['WOMEN'] = False
+        elif self.args.M == True and self.args.W == True:
+            self.config['MEN'] = True
+            self.config['WOMEN'] = True 
+        elif self.args.M == False and self.args.W == True:
+            self.config['MEN'] = False
+        #if no user input, then run default values MEN = True; WOMEN = True
+        elif self.args.M == False and self.args.W == False:
+            self.config['MEN'] = True
+            self.config['WOMEN'] = True 
+
+        # set category options 
+        # create a list input_om based on the user choices. If user chooses 1234, input_om becomes ['1','2','3','4']
+        input_om = list(set(self.args.OPTIONS_MEN))
+        # every integer inside input_om corresponds to a category, as explained in the README
         for _ in range(len(input_om)):
             if input_om[_] == '1':
                 input_om[_] = 'New in'
@@ -84,7 +130,8 @@ class AsosScraper:
                 input_om[_] = 'Face + Body'
             else:
                 pass
-        input_ow = list(args.OPTIONS_WOMEN)
+        # same for women
+        input_ow = list(set(self.args.OPTIONS_WOMEN))
         for _ in range(len(input_ow)):
             if input_ow[_] == '1':
                 input_ow[_] = 'New in'
@@ -104,22 +151,25 @@ class AsosScraper:
                 pass
        
          # default=False # contains category list if flag used
-      
+         
+        # by default, self.options_men contains all men categories, as in the default configuration file
         self.options_men = self.config['OPTIONS_MEN']
-        if args.OPTIONS_MEN != [0]:
+        # if the user chooses to scrape men categories, then the input_om list is created and replace the default value of self.options_men
+        if self.args.OPTIONS_MEN != [0]:
             self.options_men = input_om
 
         self.options_women = self.config['OPTIONS_WOMEN'] 
-        if args.OPTIONS_WOMEN != [0]:
+        if self.args.OPTIONS_WOMEN != [0]:
             self.options_women = input_ow
         
-        self.bucket_name = self.config['BUCKET_NAME']
-         
-        
+        # if the user chooses to save to the S3 bucket and inputs a bucket name, then the default configrations would become True 
+        if self.args.S3 == True:
+            self.bucket_name = self.args.BUCKET_NAME
+            
+            
     def accept_cookies(self): 
         """ 
         Method using selenium to click on accept_cookies webelement/button.
-
         Returns: 
             True (bool): if the click() method is successfully performed
         """
@@ -133,13 +183,12 @@ class AsosScraper:
         """
         Method to iterate through configured gender(s) and categories to get subcategory hrefs.
         Calls _scrape_category method to determine which subcategory to get.
-
         Variable: 
             self._all_subcategory_hrefs: initialize list to store subcategory hrefs
-
         Return:
             self._all_subcategory_hrefs (list): list containing all subcategory hrefs for the choosen gender(s)
         """
+        
         self._all_subcategory_hrefs = []
         for key,value in {'MEN':[2, self.options_men], 'WOMEN':[1, self.options_women]}.items():
             if self.config[key] == True:
@@ -156,7 +205,6 @@ class AsosScraper:
         Calls _extract_links() to get each product's href and collect them inside a list. 
         Calls get_product_information() to get details and images from every product.
         Calls save_json_to_location() to store each product details inside a json file that would be stored to configured location. 
-
         """
         self._get_all_subcategory_hrefs()
         for href in self._all_subcategory_hrefs:
@@ -165,17 +213,16 @@ class AsosScraper:
                 self.driver.get(f'{href}&page={page}')
                 self.sub_category_name = self.driver.find_element(By.XPATH,'//*[@id="category-banner-wrapper"]/div/h1').text.lower().replace(" ", "-").replace(":","").replace("'","")
                 self._extract_links(f'//*[@id="plp"]/div/div/div[2]/div/div[1]/section/article/a', 'href')
-                print(page)
                 time.sleep(1)          
                 self._get_product_information(page)
-                if self.config['PRODUCTS_PER_CATEGORY'] == 'all':
+                if self.args.PRODUCTS_PER_CATEGORY == 'all':
                     if self._is_last_page():
                         break
                 else:
-                    self.load_more = int(self.config['PRODUCTS_PER_CATEGORY']) // 72
+                    self.load_more = int(self.args.PRODUCTS_PER_CATEGORY) // 72
                     if page == self.load_more + 1:
                         break
-            if  self.config['SAVE_JSON'] == True:
+            if  self.args.SJ == True: #user needs --no-S3 to stop this action
                 self._save_json(self.all_products_dictionary, self.sub_category_name)
        
     def _is_last_page(self):
@@ -196,11 +243,9 @@ class AsosScraper:
     def _extract_links(self, xpath: str, attribute = 'href' or 'src'):
         """
         Method to extract either the href or src attributes from webelements. 
-
         Parameters:
             xpath (str): xpath of webelement containing one of the attributes: 'href' or 'src'
             attribute (str): webelement attribute that can be either 'href' or 'src' 
-
         Returns:
             self.links (list): list stores the extracted 'href's or 'src's
         """
@@ -231,7 +276,7 @@ class AsosScraper:
        
         #create a list category_list_to_dict that contains the category name, the index number of the category button and the corresponding webelement
         for element in main_category_elements:
-            main_category_heading = element.find_element_by_css_selector('span span').text
+            main_category_heading = element.find_element(By.CSS_SELECTOR,'span span').text
             if main_category_heading in self.category_list:  
                 category_list_to_dict.append(main_category_heading) 
                 category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
@@ -266,22 +311,20 @@ class AsosScraper:
         Returns:
             n (int): number of products to be scraped.
         """
-        if self.config['PRODUCTS_PER_CATEGORY'] == 'all':
-            n = self.driver.find_element(By.XPATH, '//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max')
+        if self.args.PRODUCTS_PER_CATEGORY == 'all':
+            n = int(self.driver.find_element(By.XPATH, '//*[@id="plp"]/div/div/div[2]/div/div[2]/progress').get_attribute('max'))
             return n
         else:
-            n = int(self.config['PRODUCTS_PER_CATEGORY'])
+            n = int(self.args.PRODUCTS_PER_CATEGORY)
             return n
     
     def _get_product_information (self, page: int): 
         """
         Method to go to every product on page and get product information: images & product details.
         This method calls two other instance methods: _get_details() and save_image_to_location()
-
         Parameters: 
             page (int): the page number of the website subcategory 
             This parameter is determined within the 'scrape_and_save' method.
-
         Returns: 
             self.all_products_dictionary (dict): a dictionary containing individual product details dictionaries (product_information_dict).
         """
@@ -292,7 +335,7 @@ class AsosScraper:
             self.driver.get(url)                               
             #for every product, get details and dowloand images (if requested by the user). Details are stored as nested dictionary within all_products_dictionary
             self._get_details()
-            if self.config['SAVE_IMAGES'] == True: 
+            if self.args.SI == True: 
                 self._save_image(self.sub_category_name)
             self.all_products_dictionary.update(self.product_information_dict)
             # if the product number reaches the limit imposed by the user, stop iterating through the list with products hrefs
@@ -305,12 +348,10 @@ class AsosScraper:
     def _get_details(self):
         """
         Method to get product information and details and store them into a dictionary.
-
         Variables:
             unique_product_name: unique product identifier determined by the gender, subcategory name and order on the webpage
             product_information_dict: dictionary template to which the product details are extracted. 
             xpath_dict: xpath lookup to access the details to be scraped on each product page 
-
         Return: 
             self.product_information_dict (dict): dictionary storing product information and details
                 Every product_information_dict is added to the all_products_dictionary inside get_product_information method
@@ -326,11 +367,14 @@ class AsosScraper:
                                              } 
         for key in self.xpath_dict:
             try: 
+                # ignored_exceptions=(NoSuchElementException,StaleElementReferenceException)
                 if key == 'Product Details':
+                    # details_container =  WebDriverWait(self.driver, 5, ignored_exceptions=ignored_exceptions).until(EC.presence_of_element_located(By.XPATH, (self.xpath_dict[key])))
                     details_container = self.driver.find_elements(By.XPATH, (self.xpath_dict[key]))
                     for detail in details_container:
                         self.product_information_dict[unique_product_name][key].append(detail.text)
                 else:
+                    # dict_key = WebDriverWait(self.driver, 5, ignored_exceptions=ignored_exceptions).until(EC.presence_of_element_located(By.XPATH,(self.xpath_dict[key])))
                     dict_key = self.driver.find_element(By.XPATH,(self.xpath_dict[key]))
                     self.product_information_dict[unique_product_name][key].append(dict_key.text)
                      
@@ -351,14 +395,14 @@ class AsosScraper:
         src_list = self._extract_links('//*[@id="product-gallery"]/div[2]/div[2]/div[*]/img','src')
         # //*[@id="product-gallery"]/div[2]/div[2]/div[2]/img
         
-        if self.config['LOCAL'] == True:
+        if self.args.L == True:
             image_path = f'images/{image_category}'
             if not os.path.exists(image_path):
                 os.makedirs(image_path)         
             for i,src in enumerate(src_list[:-1],1):   
                 urllib.request.urlretrieve(src, f'{image_path}/{image_name}.{i}.jpg')   
            
-        if self.config['S3_BUCKET'] == True:
+        if self.args.S3 == True:
             self.set_s3_connection()
             with tempfile.TemporaryDirectory() as temp_dir:
                 for i,src in enumerate(src_list[:-1],1):   
@@ -370,7 +414,6 @@ class AsosScraper:
     def _save_json(self, all_products_dictionary, sub_category_name):
         """
         Method to convert the all_products_dictionary object into a json format and download it into local and/or s3_bucket locations.
-
         Parameters: 
             sub_category_name (str): parameter determined within the get_product_information method. 
             all_products_dictionary (dict): dictionary to be converted into json file; this parameter is determined within the get_product_information_ method.
@@ -378,17 +421,15 @@ class AsosScraper:
         file_to_convert = all_products_dictionary
         file_name = f'{sub_category_name}-details.json'
 
-        if self.config['LOCAL'] == True:
+        if self.args.L == True:
             if not os.path.exists('json-files'):
                 os.makedirs('json-files')
             with open(f'json-files/{file_name}', mode='a+', encoding='utf-8-sig') as f:
                 json.dump(file_to_convert, f, indent=4, ensure_ascii=False) 
                 f.write('\n') 
         
-        if self.config['S3_BUCKET'] == True:
-            bucket_name = self.config['BUCKET_NAME']
+        if self.args.S3 == True:
             self.set_s3_connection()
-            # temp_dir = tempfile.TemporaryDirectory()
             with tempfile.TemporaryDirectory() as temp_dir:
                 with open(f'{temp_dir}/{file_name}', mode='a+', encoding='utf-8-sig') as f:
                     json.dump(file_to_convert, f, indent=4, ensure_ascii=False) 
@@ -402,7 +443,6 @@ class AsosScraper:
     def set_s3_connection(self):
         """
         Method to create service client connection to the S3 AWS services.
-
         Returns:
             self.s3_client: variable name for the s3 client connection 
         """

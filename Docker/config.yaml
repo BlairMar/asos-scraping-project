@@ -4,9 +4,9 @@ MEN: True
 WOMEN: True
 LOCAL: True
 S3_BUCKET: False
-BUCKET_NAME: asosscraperbucket2
-PRODUCTS_PER_CATEGORY: 2 
-SAVE_IMAGES: True
+BUCKET_NAME: #<bucket name>
+PRODUCTS_PER_CATEGORY: all
+SAVE_IMAGES: False
 SAVE_JSON: True 
 OPTIONS_MEN:
         - New in
@@ -24,5 +24,4 @@ OPTIONS_WOMEN:
         - Topshop
         - Sportswear
         - Face + Body
-
 

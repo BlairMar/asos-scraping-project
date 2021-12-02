@@ -1,0 +1,6 @@
+typing 
+requests
+selenium==3.141.0
+tqdm
+boto3
+PyYAML==5.4.1
