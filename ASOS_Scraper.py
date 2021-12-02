@@ -65,7 +65,6 @@ class AsosScraper:
             return True
         except: 
             pass
-# //*[@id="product-details-container"]/div[3]/div/a[1]
 
     def _get_all_subcategory_hrefs(self):
         """
@@ -164,9 +163,10 @@ class AsosScraper:
         
         self.subcategory_hrefs = [] #href links to be scraped
         self.category_list = category_list
-        category_list_to_dict = [] #this list will contain the category name, the index number of the category button and the corresponding webelement (button) 
+        category_list_to_dict = []  
         main_category_elements = self.driver.find_elements(By.XPATH,(xpath))
        
+        #create a list category_list_to_dict that contains the category name, the index number of the category button and the corresponding webelement
         for element in main_category_elements:
             main_category_heading = element.find_element_by_css_selector('span span').text
             if main_category_heading in self.category_list:  
@@ -174,7 +174,10 @@ class AsosScraper:
                 category_list_to_dict.append(int(element.get_attribute('data-index')) + 1) 
                 category_list_to_dict.append(element) 
         
+        #transform categroy_list_to_dict into a dictionary containing the category names as a keys, and index_number and webelement as values
         category_dict = {category_list_to_dict[i]:[category_list_to_dict[i + 1],category_list_to_dict[i + 2]] for i in range(0, len(category_list_to_dict), 3)}  
+        
+        #for every category, in category_dict, get the href for either 'View all' or 'New in' subcatgories. If both 'View all' and 'New in' exist within category, get 'View all' href 
         subcategory_elements_list = [] 
         for i, (key, elements) in enumerate(category_dict.items()): 
             elements[1].click()  
@@ -189,7 +192,7 @@ class AsosScraper:
                     temp = element        
             else:
                 self.subcategory_hrefs.append(temp.get_attribute('href'))     
-        return self.subcategory_hrefs
+        return self.subcategory_hrefs 
  
     def _get_number_of_products(self):
         """
@@ -219,16 +222,21 @@ class AsosScraper:
         Returns: 
             self.all_products_dictionary (dict): a dictionary containing individual product details dictionaries (product_information_dict).
         """
+        # iterate through the list with products href until the product number equals the number of products set by the user 
         n = self._get_number_of_products()
         for nr, url in tqdm(itertools.islice(enumerate(self.links,1),n)): 
             self.product_number = ((page-1)*72) + nr 
             self.driver.get(url)                               
+            #for every product, get details and dowloand images (if requested by the user). Details are stored as nested dictionary within all_products_dictionary
             self._get_details()
             if self.config['SAVE_IMAGES'] == True: 
                 self._save_image(self.sub_category_name)
             self.all_products_dictionary.update(self.product_information_dict)
+            # if the product number reaches the limit imposed by the user, stop iterating through the list with products hrefs
             if self.product_number == n:
                 break
+        
+        # all_products_dictionary is converted to json format when save_json method is called inside scrape_and_save method
         return self.all_products_dictionary
         
     def _get_details(self):
@@ -277,7 +285,8 @@ class AsosScraper:
         """
         image_category = sub_category_name
         image_name = f'{sub_category_name}-product{self.product_number}'
-        src_list = self._extract_links('//*[@id="product-gallery"]/div[1]/div[2]/div[*]/img','src')
+        src_list = self._extract_links('//*[@id="product-gallery"]/div[2]/div[2]/div[*]/img','src')
+        # //*[@id="product-gallery"]/div[2]/div[2]/div[2]/img
         
         if self.config['LOCAL'] == True:
             image_path = f'images/{image_category}'
