@@ -9,6 +9,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
@@ -20,6 +21,9 @@ import tempfile
 import shutil
 import yaml
 import argparse
+import pandas as pd
+import psycopg2
+from sqlalchemy import create_engine
 
 class AsosScraper:
     xpath_dict = {
@@ -48,12 +52,12 @@ class AsosScraper:
             self.config = yaml.safe_load(f)
 
         self.root = "https://www.asos.com/"
-        self.accept_cookies()
         self.links = [] 
         
         # use argparsers to set CLI flags 
         parser = argparse.ArgumentParser(description='Scraper Config')
-        parser.add_argument('--CH', action=argparse.BooleanOptionalAction, default=True) # --no-CH not to run driver.Chrome()
+        parser.add_argument('--CHW', action=argparse.BooleanOptionalAction, default=False) # --CHW to run Chrome
+        parser.add_argument('--CH', action=argparse.BooleanOptionalAction, default=True) # --no-CH not to run headless Chrome
         parser.add_argument('--R', action=argparse.BooleanOptionalAction, default=False) # --R for driver.Remote()
         parser.add_argument('--M', action=argparse.BooleanOptionalAction, default=False) # --M for men
         parser.add_argument('--W', action=argparse.BooleanOptionalAction, default=False) # --W for women
@@ -61,27 +65,33 @@ class AsosScraper:
         parser.add_argument('--S3', action=argparse.BooleanOptionalAction, default=False) # --S3 to save to S3 bucket
         parser.add_argument('--SJ', action=argparse.BooleanOptionalAction, default=True) # --no-SJ no to save JSON file
         parser.add_argument('--SI', action=argparse.BooleanOptionalAction, default=False) #  --SI to save image 
+        parser.add_argument('--DB', action=argparse.BooleanOptionalAction, default=False) # --DB save data into a databse 
         parser.add_argument("-BN", "--BUCKET_NAME", help="Name of your S3 Bucket") #-BN <bucket name> for bucket name
         parser.add_argument("-NUM", "--PRODUCTS_PER_CATEGORY", help="Number of products per category", default='all')  # -NUM to customize number of products
         parser.add_argument("-OM", "--OPTIONS_MEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topman, (6)Sportswear, (7)Face + Body", default=[0]) # -OM to customize men catgegories
         parser.add_argument("-OW", "--OPTIONS_WOMEN", help="(1)New in, (2)Clothing, (3)Shoes, (4)Accessories, (5)Topshop, (6)Sportswear, (7)Face + Body", default=[0]) # -OW to customize women categories
+        parser.add_argument('-N','--DBNAME',help='Type your databse name',default=False) #-N <database name>
+        parser.add_argument('-PT','--PORT',help='Type the connection port',default=False) #-PT <connection port>
+        parser.add_argument('-PS','--PASSWORD',help='Type your database connection password') #-PS <password>
         self.args = parser.parse_args()
         print(self.args)
 
+        chrome_options = Options()
         #conditions to choose the driver
         # if no user input, the default settings would run Chrome driver
         if self.args.CH == True and self.args.R == False:
             # if self.config['DRIVER'] == 'Chrome':
-            chrome_options = Options()
             chrome_options.add_argument('--ignore-certificate-errors')
             chrome_options.add_argument('--allow-running-insecure-content')        
             chrome_options.add_argument('--no-sandbox')        
             chrome_options.add_argument('--headless')        
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument("user-agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36'") 
-
-       	    self.driver = webdriver.Chrome(options=chrome_options)
-            
+            chrome_options.add_argument("window-size=1920,1080")
+            self.driver = webdriver.Chrome(options=chrome_options)
+        
+        if self.args.CHW == True:
+            self.driver = webdriver.Chrome()
         # if user chooses Remote, then driver = Remote
         if self.args.CH == False and self.args.R == True: # --no-CH
             self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
@@ -91,9 +101,8 @@ class AsosScraper:
             print('Your choice is both Chrome and Remote. The driver will run remotely')
             self.driver = webdriver.Remote("http://127.0.0.1:4444/wd/hub", DesiredCapabilities.CHROME)
 
-        
         self.driver.get(self.root)
-
+        
         # conditions to set the gender
         # by default, both self.config['WOMEN'] & self.config['MEN'] are True, so the scraper would scrape both genders
         # the user can customize the gender and this would override the default configuration
@@ -150,7 +159,7 @@ class AsosScraper:
             else:
                 pass
        
-         # default=False # contains category list if flag used
+        # default=False # contains category list if flag used
          
         # by default, self.options_men contains all men categories, as in the default configuration file
         self.options_men = self.config['OPTIONS_MEN']
@@ -165,7 +174,8 @@ class AsosScraper:
         # if the user chooses to save to the S3 bucket and inputs a bucket name, then the default configrations would become True 
         if self.args.S3 == True:
             self.bucket_name = self.args.BUCKET_NAME
-            
+        
+        self.driver.get_screenshot_as_file('ss.png')
             
     def accept_cookies(self): 
         """ 
@@ -222,7 +232,9 @@ class AsosScraper:
                     self.load_more = int(self.args.PRODUCTS_PER_CATEGORY) // 72
                     if page == self.load_more + 1:
                         break
-            if  self.args.SJ == True: #user needs --no-S3 to stop this action
+            if self.args.DB == True:        
+                self._create_dataframe(self.all_products_dictionary,self.sub_category_name)
+            if  self.args.SJ == True: #user needs --no-SJ to stop this action
                 self._save_json(self.all_products_dictionary, self.sub_category_name)
        
     def _is_last_page(self):
@@ -334,6 +346,7 @@ class AsosScraper:
             self.product_number = ((page-1)*72) + nr 
             self.driver.get(url)                               
             #for every product, get details and dowloand images (if requested by the user). Details are stored as nested dictionary within all_products_dictionary
+            self.driver.get_screenshot_as_file('ss1.png')
             self._get_details()
             if self.args.SI == True: 
                 self._save_image(self.sub_category_name)
@@ -370,9 +383,23 @@ class AsosScraper:
                 # ignored_exceptions=(NoSuchElementException,StaleElementReferenceException)
                 if key == 'Product Details':
                     # details_container =  WebDriverWait(self.driver, 5, ignored_exceptions=ignored_exceptions).until(EC.presence_of_element_located(By.XPATH, (self.xpath_dict[key])))
+                    self.driver.find_element(By.XPATH,'//*[@id="product-details-container"]/div[4]/div/a[1]').click()
                     details_container = self.driver.find_elements(By.XPATH, (self.xpath_dict[key]))
                     for detail in details_container:
+                        time.sleep(0.5)
                         self.product_information_dict[unique_product_name][key].append(detail.text)
+                
+                if key == 'Colour':
+                    dict_key = self.driver.find_element(By.XPATH,(self.xpath_dict[key]))
+                    if dict_key.text == '':
+                        color_options = self.driver.find_element(By.XPATH, '//*[@id="product-colour"]/section/div/div/div/select')
+                        select = Select(color_options)
+                        options_list = select.options
+                        for option in options_list[1:]:
+                            self.product_information_dict[unique_product_name][key].append(option.text)  
+                    else:
+                        self.product_information_dict[unique_product_name][key].append(dict_key.text)
+                        
                 else:
                     # dict_key = WebDriverWait(self.driver, 5, ignored_exceptions=ignored_exceptions).until(EC.presence_of_element_located(By.XPATH,(self.xpath_dict[key])))
                     dict_key = self.driver.find_element(By.XPATH,(self.xpath_dict[key]))
@@ -448,7 +475,79 @@ class AsosScraper:
         """
         self.s3_client = boto3.client('s3')
         return self.s3_client
-          
+
+
+    def _create_dataframe(self, all_products_dictionary,sub_category_name):
+        """
+        Method to create pandas dataframe to manipulate json data format. 
+        """
+        # import collected data to pandas dataframe
+        df = pd.DataFrame(all_products_dictionary)
+        df_t = df.transpose()
+        # clean data so that it is not displayed in lists but in strings and strip unwanted characters 
+        for row in range(len(df_t)):
+            df_t['Product Name'][row] = self._listToString(df_t['Product Name'][row])
+            df_t['Price'][row] = self._listToString(df_t['Price'][row]).strip('Â Now')
+            df_t['Product Code'][row] = self._listToString(df_t['Product Code'][row])
+        df_t = df_t.reset_index()
+        df_t.rename({'index':'Categroy & product number'}, axis=1, inplace=True)
+        # connect to PostgreSQL database
+        self._connect_to_RDS()
+        # save data to SQL in tables named by the scraped subcategory
+        df_t.to_sql(f'ASOS_{sub_category_name}', self.engine, if_exists = 'replace')
+
+    def _listToString(self,string): 
+        """
+        Method to transform list into string.
+        
+        Returns:
+            created_string (str)
+        """
+        # initialize an empty string
+        created_string = "" 
+        # traverse in the string  
+        for ele in string: 
+            created_string += ele  
+        # return string  
+        return created_string 
+
+    def _connect_to_RDS(self):
+        """
+        Method to connect to PostgreSQL database using psycopg2. 
+        Variables: 
+            DATABASE_TYPE (str): 'ostgreSQL' by default
+            DBAPI (str): 'psycopg2' by default
+            USER (str): 'postgres' by default
+            PASSWORD (str): needs user input 
+            PORT (str): uses user input or 5432 as default
+            DATABASE (str): uses user input or 'Pagila' as default
+            HOST (str): 'localhost' by default 
+        
+        Returns:
+            self.engin: the engine to connect to the PostgreSQL database.
+        """
+        DATABASE_TYPE = 'postgresql'
+        DBAPI = 'psycopg2'
+        USER = 'postgres'
+        # User's for a conenction password.
+        PASSWORD = str(self.args.PASSWORD)
+        # User's connection port, if none given, default to 5432.
+        if self.args.PORT == True:
+            PORT = int(self.args.PORT)
+        else:
+            PORT = 5432
+        # User's database name, if none given, default to Pagila.
+        if self.args.DBNAME == True:
+            DATABASE = str(self.args.DBNAME)
+        else:
+            DATABASE = 'Pagila'
+        HOST = 'localhost'
+        # Create engine to connect to databse using both default and user inputs 
+        self.engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+        # Connect to the RDS
+        self.engine.connect()
+        return self.engine
+
 if __name__ == '__main__':
     product_search = AsosScraper()
     product_search.accept_cookies()                     
