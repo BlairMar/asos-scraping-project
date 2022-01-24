@@ -15,8 +15,8 @@ The default settings can be changed calling different flags in the CLI when runn
 
 If running from a local or EC2 Ubuntu 20.04 terminal you can:
 - Pull and run the docker image directly from Dockerhub. Instructions on how to run the docker image inside EC2 Ubuntu 20.04 are found in the *run_scraper_container.sh* file.<br />&nbsp;&nbsp;&nbsp;&nbsp;
-    `docker pull asos_scraper` <br />&nbsp;&nbsp;&nbsp;&nbsp;
-    `docker run asos_scraper` 
+    `docker pull wr95/asos_scraper` <br />&nbsp;&nbsp;&nbsp;&nbsp;
+    `docker pull wr95/asos_scraper` 
  <br /> <br />
 ### **Configuration**
 The following parameters require arguments within the config.yaml file:
