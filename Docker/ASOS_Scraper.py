@@ -4,6 +4,13 @@ import json
 import itertools
 import urllib.request
 import selenium
+import boto3
+import tempfile
+import shutil
+import yaml
+import argparse
+import pandas as pd
+import psycopg2
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -15,15 +22,8 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
-from tqdm import tqdm
-import boto3
-import tempfile
-import shutil
-import yaml
-import argparse
-import pandas as pd
-import psycopg2
 from sqlalchemy import create_engine
+from tqdm import tqdm
 
 class AsosScraper:
     xpath_dict = {
