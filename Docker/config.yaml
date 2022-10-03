@@ -1,0 +1,27 @@
+DRIVER: Chrome
+# DRIVER: Remote
+MEN: True 
+WOMEN: True
+LOCAL: True
+S3_BUCKET: False
+BUCKET_NAME: #<bucket name>
+PRODUCTS_PER_CATEGORY: all
+SAVE_IMAGES: False
+SAVE_JSON: True 
+OPTIONS_MEN:
+        - New in
+        - Clothing
+        - Shoes
+        - Accessories
+        - Topman
+        - Sportswear
+        - Face + Body
+OPTIONS_WOMEN:
+        - New in
+        - Clothing
+        - Shoes
+        - Accessories
+        - Topshop
+        - Sportswear
+        - Face + Body
+
